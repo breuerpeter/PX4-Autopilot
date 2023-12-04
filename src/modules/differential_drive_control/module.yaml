@@ -1,0 +1,47 @@
+module_name: Differential Drive Control
+
+parameters:
+  - group: Rover Differential Drive
+    definitions:
+      RDD_WHEEL_BASE:
+        description:
+          short: Wheel base
+          long: Distance from the center of the right wheel to the center of the left wheel
+        type: float
+        unit: m
+        min: 0.001
+        max: 100
+        increment: 0.001
+        decimal: 3
+        default: 0.5
+      RDD_WHEEL_RADIUS:
+        description:
+          short: Wheel radius
+          long: Size of the wheel, half the diameter of the wheel
+        type: float
+        unit: m
+        min: 0.001
+        max: 100
+        increment: 0.001
+        decimal: 3
+        default: 0.1
+      RDD_MAX_SPEED:
+        description:
+          short: Maximum speed
+        type: float
+        unit: m/s
+        min: 0
+        max: 100
+        increment: 0.01
+        decimal: 2
+        default: 0.5
+      RDD_MAX_ANG_VEL:
+        description:
+          short: Maximum angular velocity
+        type: float
+        unit: rad/s
+        min: 0
+        max: 100
+        increment: 0.01
+        decimal: 2
+        default: 0.3

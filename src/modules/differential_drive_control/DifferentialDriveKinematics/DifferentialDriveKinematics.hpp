@@ -48,27 +48,27 @@ public:
 	~DifferentialDriveKinematics() = default;
 
 	/**
-	 * @brief Computes the inverse kinematics for differential drive.
-	 *
-	 * @param linear_vel_x Linear velocity along the x-axis.
-	 * @param yaw_rate Yaw rate of the robot.
-	 * @return matrix::Vector2f Motor velocities for the right and left motors.
-	 */
-	matrix::Vector2f computeInverseKinematics(float linear_vel_x, float yaw_rate);
-
-	/**
 	 * @brief Sets the wheel base of the robot.
 	 *
 	 * @param wheel_base The distance between the centers of the wheels.
 	 */
-	void setWheelBase(float wheel_base);
+	void setWheelBase(const float wheel_base) { _wheel_base = wheel_base; };
 
 	/**
 	 * @brief Sets the radius of the wheels of the robot.
 	 *
 	 * @param wheel_radius The radius of the wheels.
 	 */
-	void setWheelRadius(float wheel_radius);
+	void setWheelRadius(const float wheel_radius) { _wheel_radius = wheel_radius; };
+
+	/**
+	 * @brief Computes the inverse kinematics for differential drive.
+	 *
+	 * @param linear_velocity_x Linear velocity along the x-axis.
+	 * @param yaw_rate Yaw rate of the robot.
+	 * @return matrix::Vector2f Motor velocities for the right and left motors.
+	 */
+	matrix::Vector2f computeInverseKinematics(float linear_velocity_x, float yaw_rate);
 
 private:
 	float _wheel_base{0.f};

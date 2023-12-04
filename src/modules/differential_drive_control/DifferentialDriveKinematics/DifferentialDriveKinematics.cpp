@@ -33,20 +33,16 @@
 
 #include "DifferentialDriveKinematics.hpp"
 
-void DifferentialDriveKinematics::setWheelBase(float wheel_base)
-{
-	_wheel_base = wheel_base;
-}
+using namespace matrix;
 
-void DifferentialDriveKinematics::setWheelRadius(float wheel_radius)
+matrix::Vector2f DifferentialDriveKinematics::computeInverseKinematics(float linear_velocity_x, float yaw_rate)
 {
-	_wheel_radius = wheel_radius;
-}
+	if (_wheel_radius < FLT_EPSILON) {
+		return Vector2f();
+	}
 
-matrix::Vector2f DifferentialDriveKinematics::computeInverseKinematics(float linear_vel_x, float yaw_rate)
-{
-	float motor_vel_right = linear_vel_x / _wheel_radius - _wheel_base / 2.f * yaw_rate / _wheel_radius;
-	float motor_vel_left = linear_vel_x / _wheel_radius + _wheel_base / 2.f * yaw_rate / _wheel_radius;
+	const float rotational_velocity = (_wheel_base / 2.f) * yaw_rate;
 
-	return matrix::Vector2f(motor_vel_right, motor_vel_left);
+	return Vector2f(linear_velocity_x - rotational_velocity,
+			linear_velocity_x + rotational_velocity) / _wheel_radius;
 }
