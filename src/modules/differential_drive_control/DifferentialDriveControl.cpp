@@ -42,7 +42,6 @@ DifferentialDriveControl::DifferentialDriveControl() :
 	ModuleParams(nullptr),
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::rate_ctrl)
 {
-	_outputs_pub.advertise();
 	_last_timestamp = hrt_absolute_time();
 	_differential_drive_kinematics.setWheelBase(_param_rdd_wheel_base.get());
 	_differential_drive_kinematics.setWheelRadius(_param_rdd_wheel_radius.get());
