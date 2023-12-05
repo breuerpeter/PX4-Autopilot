@@ -207,8 +207,6 @@ public:
 protected:
 	void updateParams() override;
 
-private:
-
 	bool armNoThrottle() const
 	{
 		return (_armed.prearmed && !_armed.armed) || _armed.in_esc_calibration_mode;
