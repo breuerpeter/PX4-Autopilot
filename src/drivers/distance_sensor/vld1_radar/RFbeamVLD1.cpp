@@ -4,153 +4,256 @@
 #include <lib/drivers/device/Device.hpp>
 
 RFbeamVLD1::RFbeamVLD1(const char *port, uint8_t rotation)
-    : ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)), _px4_rangefinder(0, rotation) {
-        // Store port name
-        strncpy(_port, port, sizeof(_port) - 1);
+	: ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)), _px4_rangefinder(0, rotation)
+{
+	// Store port name
+	strncpy(_port, port, sizeof(_port) - 1);
 
-        // Enforce null terminal
-        _port[sizeof(_port) - 1] = '\0';
+	// Enforce null terminal
+	_port[sizeof(_port) - 1] = '\0';
 
-        device::Device::DeviceId device_id;
-        device_id.devid_s.bus_type = device::Device::Device::DeviceBusType_SERIAL;
+	device::Device::DeviceId device_id;
+	device_id.devid_s.bus_type = device::Device::Device::DeviceBusType_SERIAL;
 
-        uint8_t bus_num = atoi(&_port[strlen(_port) - 1]);  // Assuming '/dev/ttySx'
+	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]);  // Assuming '/dev/ttySx'
 
-        if (bus_num < 10) {
-                device_id.devid_s.bus = bus_num;
-        }
-        _px4_rangefinder.set_device_id(device_id.devid);
-        _px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_RFBEAM);
-        _px4_rangefinder.set_rangefinder_type(distance_sensor_s::MAV_DISTANCE_SENSOR_RADAR);
+	if (bus_num < 10) {
+		device_id.devid_s.bus = bus_num;
+	}
 
-        _px4_rangefinder.set_min_distance(RFBEAM_MIN_DISTANCE);
-        _px4_rangefinder.set_max_distance(RFBEAM_MAX_DISTANCE);
+	_px4_rangefinder.set_device_id(device_id.devid);
+	_px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_RFBEAM);
+	_px4_rangefinder.set_rangefinder_type(distance_sensor_s::MAV_DISTANCE_SENSOR_RADAR);
+
+	_px4_rangefinder.set_min_distance(RFBEAM_MIN_DISTANCE);
+	_px4_rangefinder.set_max_distance(RFBEAM_MAX_DISTANCE);
 }
 
-RFbeamVLD1::~RFbeamVLD1() {
-        stop();
+RFbeamVLD1::~RFbeamVLD1()
+{
+	stop();
 
-        perf_free(_sample_perf);
-        perf_free(_comms_errors);
+	perf_free(_sample_perf);
+	perf_free(_comms_errors);
 }
 
-int RFbeamVLD1::init() {
-        start();
+int RFbeamVLD1::init()
+{
+	start();
 
-        return PX4_OK;
+	int ret = ::write(_file_descriptor, &_cmdINIT[0], sizeof(_cmdGNFD));
+
+	if (ret != sizeof(_cmdINIT)) {
+		perf_count(_comms_errors);
+		PX4_DEBUG("init cmd write fail %d", ret);
+		return ret;
+	}
+
+	return PX4_OK;
+
+        // TODO: e.g. LeddarOne driver has more thorough init routine
 }
 
-int RFbeamVLD1::collect() {
-        perf_begin(_sample_perf);
+int RFbeamVLD1::measure()
+{
+        // Flush the receive buffer
+	tcflush(_file_descriptor, TCIFLUSH);
 
-        // float distance_m = -1.0f;
+	int bytes_written = ::write(_file_descriptor, _cmdGNFD, sizeof(_cmdGNFD));
 
-        // TODO: Send command to radar
-        // ::write()
+	if (bytes_written != sizeof(_cmdGNFD)) {
+		perf_count(_comms_errors);
+		PX4_DEBUG("measure cmd write fail %d", bytes_written);
+		return bytes_written;
+	}
 
-        // TODO: Read from sensor UART buffer
-        const hrt_abstime timestamp_sample = hrt_absolute_time();
-
-        // Send via uORB
-        _px4_rangefinder.update(timestamp_sample, 2.0f); // TODO: distance_m
-
-        perf_end(_sample_perf);
-
-        return PX4_OK;
+        _read_buffer_len = 0;
+	return PX4_OK;
 }
 
-int RFbeamVLD1::open_serial_port(const speed_t speed) {
-        // File descriptor already initialized?
-        if (_file_descriptor > 0) {
-                PX4_DEBUG("serial port already open");
-                return PX4_OK;
-        }
+int RFbeamVLD1::collect()
+{
+	perf_begin(_sample_perf);
 
-        // Configure port flags for read/write, non-controlling, non-blocking
-        int flags = (O_RDWR | O_NOCTTY | O_NONBLOCK);
+	int64_t read_elapsed = hrt_elapsed_time(&_last_read_time);
 
-        // Open the serial port
-        _file_descriptor = ::open(_port, flags);
+        _read_time = hrt_absolute_time(); // TODO: e.g. LeddarOne driver sets timestamp in measure()
 
-        if (_file_descriptor < 0) {
-                PX4_ERR("open failed (%i)", errno);
-                return PX4_ERROR;
-        }
+        const int buffer_size = sizeof(_read_buffer);
+	const int message_size = sizeof(reading_msg);
 
-        if (!isatty(_file_descriptor)) {
-                PX4_WARN("not a serial device");
-                return PX4_ERROR;
-        }
+        int bytes_read = ::read(_file_descriptor, _read_buffer + _read_buffer_len, buffer_size - _read_buffer_len);
 
-        termios uart_config{};
+	/* // Buffer for reading chars is buffer length minus null termination
+	char readbuf[sizeof(_read_buffer)]; // TODO: why is this step even needed?
+	unsigned readlen = sizeof(_read_buffer) - 1;
 
-        // Store the current port configuration. attributes
-        tcgetattr(_file_descriptor, &uart_config);
+	// Read from sensor (UART buffer)
+	int bytes_read = ::read(_file_descriptor, &_read_buffer[0], readlen); */
 
-        uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
+	if (bytes_read < 0) {
+		PX4_DEBUG("read err: %d", bytes_read);
+		perf_count(_comms_errors);
+		perf_end(_sample_perf);
 
-        // Clear ONLCR flag (which appends a CR for every LF)
-        uart_config.c_oflag &= ~ONLCR;
+		// Throw an error on timeout
+		if (read_elapsed > (_interval * 2)) {
+			return bytes_read;
 
-        // No parity, one stop bit.
-        uart_config.c_cflag &= ~(CSTOPB | PARENB);
+		} else {
+			return -EAGAIN;
+		}
 
-        // No line processing - echo off, echo newline off, canonical mode off, extended input processing off, signal
-        // chars off
-        uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+	} else if (bytes_read == 0) {
+		return -EAGAIN;
+	}
 
-        // Set the input baud rate in the uart_config struct
-        int termios_state = cfsetispeed(&uart_config, speed);
+        _read_buffer_len += bytes_read;
 
-        if (termios_state < 0) {
-                PX4_ERR("CFG: %d ISPD", termios_state);
-                ::close(_file_descriptor);
-                return PX4_ERROR;
-        }
+	if (_read_buffer_len < message_size) {
+		// Return on next scheduled cycle to collect remaining data
+		return PX4_OK;
+	}
 
-        // Set the output baud rate in the uart_config struct
-        termios_state = cfsetospeed(&uart_config, speed);
+        _last_read_time = hrt_absolute_time();
 
-        if (termios_state < 0) {
-                PX4_ERR("CFG: %d OSPD", termios_state);
-                ::close(_file_descriptor);
-                return PX4_ERROR;
-        }
+        // reading_msg *msg {nullptr};
+	// msg = (reading_msg *)_read_buffer;
 
-        // Apply the modified port attributes
-        termios_state = tcsetattr(_file_descriptor, TCSANOW, &uart_config);
+	// float distance_m = msg->distance;
 
-        if (termios_state < 0) {
-                PX4_ERR("baud %d ATTR", termios_state);
-                ::close(_file_descriptor);
-                return PX4_ERROR;
-        }
+	// Send via uORB
+	_px4_rangefinder.update(_read_time, 2.0f); // TODO: distance_m
 
-        PX4_INFO("successfully opened UART port %s", _port);
-        return PX4_OK;
+	perf_end(_sample_perf);
+
+	return PX4_OK;
 }
 
-void RFbeamVLD1::Run() {
-        // Ensure the serial port is open
-        open_serial_port();
+int RFbeamVLD1::open_serial_port(const speed_t speed)
+{
+	// File descriptor already initialized?
+	if (_file_descriptor > 0) {
+		PX4_DEBUG("serial port already open");
+		return PX4_OK;
+	}
 
-        collect();
+	// Configure port flags (read/write, non-controlling, non-blocking)
+	int flags = (O_RDWR | O_NOCTTY | O_NONBLOCK);
+
+	// Open the serial port
+	_file_descriptor = ::open(_port, flags);
+
+	if (_file_descriptor < 0) {
+		PX4_ERR("open failed (%i)", errno);
+		return PX4_ERROR;
+	}
+
+	if (!isatty(_file_descriptor)) {
+		PX4_WARN("not a serial device");
+		return PX4_ERROR;
+	}
+
+	termios uart_config{};
+
+	// Store the current port configuration attributes
+	tcgetattr(_file_descriptor, &uart_config);
+
+	uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
+
+	// Clear ONLCR flag (which appends a CR for every LF)
+	uart_config.c_oflag &= ~ONLCR;
+
+	// No parity, one stop bit
+	uart_config.c_cflag &= ~(CSTOPB | PARENB);
+
+	// No line processing - echo off, echo newline off, canonical mode off, extended input processing off, signal chars off
+	uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+
+	// Set the input baud rate in the uart_config struct
+	int termios_state = cfsetispeed(&uart_config, speed);
+
+	if (termios_state < 0) {
+		PX4_ERR("CFG: %d ISPD", termios_state);
+		::close(_file_descriptor);
+		return PX4_ERROR;
+	}
+
+	// Set the output baud rate in the uart_config struct
+	termios_state = cfsetospeed(&uart_config, speed);
+
+	if (termios_state < 0) {
+		PX4_ERR("CFG: %d OSPD", termios_state);
+		::close(_file_descriptor);
+		return PX4_ERROR;
+	}
+
+	// Apply the modified port attributes
+	termios_state = tcsetattr(_file_descriptor, TCSANOW, &uart_config);
+
+	if (termios_state < 0) {
+		PX4_ERR("baud %d ATTR", termios_state);
+		::close(_file_descriptor);
+		return PX4_ERROR;
+	}
+
+        // Flush the hardware buffers
+	tcflush(_file_descriptor, TCIOFLUSH);
+
+	PX4_INFO("successfully opened UART port %s", _port);
+	return PX4_OK;
 }
 
-void RFbeamVLD1::start() {
-        // Schedule the driver at regular intervals
-        ScheduleOnInterval(RFBEAM_MEASURE_INTERVAL, 0);
+void RFbeamVLD1::Run()
+{
+	// Ensure the serial port is open
+	open_serial_port();
+
+	// Collection phase
+	if (_collect_phase) {
+		if (OK != collect()) {
+			PX4_DEBUG("collection error");
+			// Restart the measurement state machine
+			start();
+			return;
+		}
+
+		// Next phase is measurement
+		_collect_phase = false;
+	}
+
+	// Measurement phase
+	if (OK != measure()) {
+		PX4_DEBUG("measure error");
+	}
+
+	// Next phase is collection
+	_collect_phase = true;
+
+	// Schedule a fresh cycle call when the measurement is done
+	ScheduleDelayed(_interval);
 }
 
-void RFbeamVLD1::stop() {
-        // Ensure the serial port is closed
-        ::close(_file_descriptor);
+void RFbeamVLD1::start()
+{
+	// Reset the report ring and state machine
+	_collect_phase = false;
 
-        // Clear the work queue schedule
-        ScheduleClear();
+	// Schedule a cycle to start things
+	ScheduleNow();
 }
 
-void RFbeamVLD1::print_info() {
-        perf_print_counter(_sample_perf);
-        perf_print_counter(_comms_errors);
+void RFbeamVLD1::stop()
+{
+	// Ensure the serial port is closed
+	::close(_file_descriptor);
+
+	// Clear the work queue schedule
+	ScheduleClear();
+}
+
+void RFbeamVLD1::print_info()
+{
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_comms_errors);
 }

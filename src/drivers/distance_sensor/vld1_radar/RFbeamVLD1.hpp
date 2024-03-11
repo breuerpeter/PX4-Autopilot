@@ -18,7 +18,6 @@
 using namespace time_literals;
 
 // Datasheet values independent of settings
-#define RFBEAM_BUFFER_LENGTH        50  // TODO
 #define RFBEAM_STARTUP_TIME         15_ms
 
 // Settings
@@ -88,11 +87,10 @@ using namespace time_literals;
 #define RADC_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 2048 * sizeof(int16_t)   // Payload length for RADC command
 #define DONE_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 4 * sizeof(uint32_t)     // Payload length for DONE command
 
-struct PDAT {
+struct __attribute__((__packed__)) reading_msg {
         float distance;
         uint16_t mag;
 };
-
 
 class RFbeamVLD1 : public px4::ScheduledWorkItem {
        public:
@@ -105,7 +103,17 @@ class RFbeamVLD1 : public px4::ScheduledWorkItem {
         RFbeamVLD1(const char *port, uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING);
         ~RFbeamVLD1() override;
 
+        /**
+         * @brief Send INIT command to sensor
+         *
+         * @return int
+         */
         int init();
+
+        /**
+         * @brief Print some basic information about the driver.
+         *
+         */
         void print_info();
 
        private:
@@ -117,6 +125,13 @@ class RFbeamVLD1 : public px4::ScheduledWorkItem {
         int collect();
 
         /**
+         * @brief Send command to obtain reading from sensor.
+         *
+         * @return int
+         */
+        int measure();
+
+        /**
          * @brief Opens and configures the serial communications port.
          *
          * @param speed The baudrate (speed) to configure the serial UART port.
@@ -124,8 +139,22 @@ class RFbeamVLD1 : public px4::ScheduledWorkItem {
          */
         int open_serial_port(const speed_t speed = B115200);
 
+        /**
+         * @brief Request or read measurement at intervals
+         *
+         */
         void Run() override;
+
+        /**
+         * @brief Initialise the automatic measurement state machine and start it.
+         *
+         */
         void start();
+
+        /**
+         * @brief Stop the automatic measurement state machine.
+         *
+         */
         void stop();
 
         PX4Rangefinder _px4_rangefinder;
@@ -134,7 +163,15 @@ class RFbeamVLD1 : public px4::ScheduledWorkItem {
 
         int _file_descriptor{-1};
 
-        uint8_t _buffer[RFBEAM_BUFFER_LENGTH]{};
+        uint8_t _read_buffer[sizeof(reading_msg)];
+        uint8_t _read_buffer_len{0};
+
+        hrt_abstime _last_read_time{0};
+        hrt_abstime _read_time{0};
+
+        int _interval{RFBEAM_MEASURE_INTERVAL};
+
+        bool _collect_phase{false};
 
         perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME ": comm_err")};
         perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": read")};
@@ -143,14 +180,30 @@ class RFbeamVLD1 : public px4::ScheduledWorkItem {
         // TODO: length of arrays not necessary
 
         // {INIT, 1, 0} = 115200 bit/s
-        uint8_t _cmdINIT[INIT_PACKET_BYTES] = {0x49, 0x4E, 0x49, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00};
+        const uint8_t _cmdINIT[INIT_PACKET_BYTES] = {0x49, 0x4E, 0x49, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00};
+
 
         // {GNFD, 1, 4}
-        uint8_t _cmdGNFD[GNFD_PACKET_BYTES] = {0x47, 0x4E, 0x46, 0x44, 0x01, 0x00, 0x00, 0x00, 0x04};
+        const uint8_t _cmdGNFD[GNFD_PACKET_BYTES] = {0x47, 0x4E, 0x46, 0x44, 0x01, 0x00, 0x00, 0x00, 0x04};
 
-        // {TGFI, 1, 2} = farthest first
-        uint8_t _cmdTGFI_Far[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x02};
 
-        // {TGFI, 1, 0} = strongest first
-        uint8_t _cmdTGFI_Strong[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
+        // {PREC, 1, 1} = high precision mode (default)
+        const uint8_t _cmdHIGHPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x01};
+
+        // {PREC, 1, 0} = low precision mode
+        const uint8_t _cmdLOWPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00};
+
+
+        // {TGFI, 1, 0} = target filter: strongest first
+        const uint8_t _cmdTGFI_STRONG[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
+
+        // {TGFI, 1, 0} = target filter: nearest first
+        const uint8_t _cmdTGFI_NEAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
+
+        // {TGFI, 1, 2} = target filter: farthest first
+        const uint8_t _cmdTGFI_FAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x02};
+
+
+        // {RFSE, 0} = restore factory settings
+        const uint8_t _cmdRFSE[RFSE_PACKET_BYTES] = {0x52, 0x46, 0x53, 0x45, 0x00, 0x00, 0x00, 0x00};
 };
