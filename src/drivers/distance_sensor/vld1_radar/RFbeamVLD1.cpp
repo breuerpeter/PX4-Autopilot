@@ -12,12 +12,12 @@ RFbeamVLD1::RFbeamVLD1(const char *port, uint8_t rotation)
         _port[sizeof(_port) - 1] = '\0';
 
         device::Device::DeviceId device_id;
-        device_id.device_s.bus_type = device::Device::Device::DeviceBusType_SERIAL;
+        device_id.devid_s.bus_type = device::Device::Device::DeviceBusType_SERIAL;
 
         uint8_t bus_num = atoi(&_port[strlen(_port) - 1]);  // Assuming '/dev/ttySx'
 
         if (bus_num < 10) {
-                device_id.device_s.bus = bus_num;
+                device_id.devid_s.bus = bus_num;
         }
         _px4_rangefinder.set_device_id(device_id.devid);
         _px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_RFBEAM);
@@ -42,8 +42,8 @@ int RFbeamVLD1::init() {
 
 int RFbeamVLD1::collect() {
         perf_begin(_sample_perf);
-\
-        float distance_m = -1.0f;
+
+        // float distance_m = -1.0f;
 
         // TODO: Send command to radar
         // ::write()

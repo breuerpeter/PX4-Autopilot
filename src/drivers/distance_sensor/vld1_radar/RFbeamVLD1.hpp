@@ -90,8 +90,8 @@ using namespace time_literals;
 
 struct PDAT {
         float distance;
-        uint16_t mag; 
-}
+        uint16_t mag;
+};
 
 
 class RFbeamVLD1 : public px4::ScheduledWorkItem {

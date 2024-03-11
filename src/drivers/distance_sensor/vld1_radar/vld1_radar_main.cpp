@@ -3,61 +3,67 @@
 
 #include "RFbeamVLD1.hpp"
 
-namespace vld1_radar {
-RFbeamVLD1 *g_dev { nullptr }
+namespace vld1_radar
+{
+RFbeamVLD1 *g_dev { nullptr };
 
-static int start(const char *port, uint8_t rotation) {
-        if (g_dev != nullptr) {
-                PX4_WARN("already started");
-                return -1
-        }
+static int start(const char *port, uint8_t rotation)
+{
+	if (g_dev != nullptr) {
+		PX4_WARN("already started");
+		return -1;
+	}
 
-        if (port == nullptr) {
-                PX4_ERR("serial port required");
-                return -1;
-        }
+	if (port == nullptr) {
+		PX4_ERR("serial port required");
+		return -1;
+	}
 
-        // Instantiate the driver
-        g_dev = new RFbeamVLD1(port, rotation);
+	// Instantiate the driver
+	g_dev = new RFbeamVLD1(port, rotation);
 
-        if (g_dev == nullptr) {
-                return -1;
-        }
+	if (g_dev == nullptr) {
+		return -1;
+	}
 
-        if (g_dev->init() != PX4_OK) {
-                delete g_dev;
-                g_dev = nullptr;
-                return -1;
-        }
+	if (g_dev->init() != PX4_OK) {
+		delete g_dev;
+		g_dev = nullptr;
+		return -1;
+	}
 
-        return 0;
+	return 0;
 }
 
-static int stop() {
-        if (g_dev != nullptr) {
-                delete g_dev;
-                g_dev = nullptr;
-        } else {
-                return -1
-        }
+static int stop()
+{
+	if (g_dev != nullptr) {
+		delete g_dev;
+		g_dev = nullptr;
 
-        return 0;
+	} else {
+		return -1;
+	}
+
+	return 0;
 }
 
-static int status() {
-        if (g_dev == nullptr) {
-                PX4_ERR("driver not running");
-                return -1;
-        }
+static int status()
+{
+	if (g_dev == nullptr) {
+		PX4_ERR("driver not running");
+		return -1;
+	}
 
-        g_dev->print_info();
+	g_dev->print_info();
 
-        return 0;
+	return 0;
 }
 
-static int usage() {
-        PRINT_MODULE_DESCRIPTION(
-            R"DESCR_STR(
+static int usage()
+{
+	PRINT_MODULE_DESCRIPTION(
+		R"DESCR_STR(
 ### Description
 
 Serial bus driver for the RFbeam V-LD1 radar.
