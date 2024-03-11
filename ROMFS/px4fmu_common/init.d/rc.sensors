@@ -119,6 +119,12 @@ then
 	tf02pro start -X
 fi
 
+# RFbeam V-LD1 Radar Distance Sensor (UART)
+if param compare -s SENS_EN_VLD1 1
+then
+	vld1_radar start -X
+fi
+
 # ADIS16448 spi external IMU
 if param compare -s SENS_EN_ADIS164X 1
 then
