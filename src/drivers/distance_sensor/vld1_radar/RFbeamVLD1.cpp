@@ -41,12 +41,46 @@ int RFbeamVLD1::init()
 {
 	start();
 
-	int ret = ::write(_file_descriptor, &_cmdINIT[0], sizeof(_cmdGNFD));
+	int bytes_written = ::write(_file_descriptor, _cmdINIT, sizeof(_cmdINIT));
 
-	if (ret != sizeof(_cmdINIT)) {
+	if (bytes_written != sizeof(_cmdINIT)) {
 		perf_count(_comms_errors);
-		PX4_DEBUG("init cmd write fail %d", ret);
-		return ret;
+		PX4_DEBUG("init cmd write fail %d", bytes_written);
+		return bytes_written;
+	}
+
+        // Wait for a while (50 ms)
+        px4_usleep(50000);
+
+        int32_t target_filter_mode = 0;
+	param_get(param_find("SENS_VLD1_MODE"), &target_filter_mode);
+
+        const uint8_t* tgfi_cmd = _cmdTGFI_STRONG;
+
+	switch (target_filter_mode) {
+	case 0: // provide strongest reading
+                tgfi_cmd = _cmdTGFI_STRONG;
+                PX4_DEBUG("target filter mode: strongest");
+                break;
+        case 1: // provide nearest reading
+                tgfi_cmd = _cmdTGFI_NEAR;
+                PX4_DEBUG("target filter mode: nearest");
+                break;
+        case 2: // provide farthest reading
+                tgfi_cmd = _cmdTGFI_FAR;
+                PX4_DEBUG("target filter mode: farthest");
+                break;
+        default:
+                tgfi_cmd = _cmdTGFI_STRONG;
+                PX4_DEBUG("target filter mode: default fallback (strongest)");
+        }
+
+	bytes_written = ::write(_file_descriptor, tgfi_cmd, sizeof(tgfi_cmd));
+
+	if (bytes_written != sizeof(tgfi_cmd)) {
+		perf_count(_comms_errors);
+		PX4_DEBUG("tgfi cmd write fail %d", bytes_written);
+		return bytes_written;
 	}
 
 	return PX4_OK;
@@ -123,7 +157,7 @@ int RFbeamVLD1::collect()
 	// float distance_m = msg->distance;
 
 	// Send via uORB
-	_px4_rangefinder.update(_read_time, 2.0f); // TODO: distance_m
+	_px4_rangefinder.update(_read_time, 2.0f); // TODO: distance_m, may need LSB conversion?
 
 	perf_end(_sample_perf);
 

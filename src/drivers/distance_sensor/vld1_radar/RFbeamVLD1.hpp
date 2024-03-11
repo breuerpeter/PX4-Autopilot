@@ -7,6 +7,7 @@
 #include <lib/drivers/rangefinder/PX4Rangefinder.hpp>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <drivers/drv_hrt.h>
+#include <lib/parameters/param.h>
 
 // TODO: figure out what the following includes are for/if needed at all
 #include <fcntl.h>

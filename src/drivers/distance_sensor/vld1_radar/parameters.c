@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 /**
- * RFbeam V-LD1 Radar Distance Sensor (UART)
+ * Enable RFbeam V-LD1 radar distance sensor (UART)
  *
  * @reboot_required true
  *
@@ -40,3 +40,19 @@
  * @group Sensors
  */
 PARAM_DEFINE_INT32(SENS_EN_VLD1, 0);
+
+/**
+ * RFbeam V-LD1 Radar Distance Sensor (UART) *
+ *
+ * This parameter configures the reading (strongest, nearest or farthest) to use
+ *
+ * @reboot_required true
+ * @min 0
+ * @max 2
+ * @group Sensors
+ *
+ * @value 0 Strongest reading
+ * @value 1 Nearest reading
+ * @value 2 Farthest reading
+ */
+PARAM_DEFINE_INT32(SENS_VLD1_MODE, 0);
