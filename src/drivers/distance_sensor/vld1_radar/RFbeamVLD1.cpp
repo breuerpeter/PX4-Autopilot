@@ -49,39 +49,75 @@ int RFbeamVLD1::init()
 		return bytes_written;
 	}
 
+        // TODO: check for response from sensor
+
         // Wait for a while (50 ms)
         px4_usleep(50000);
 
         int32_t target_filter_mode = 0;
 	param_get(param_find("SENS_VLD1_MODE"), &target_filter_mode);
 
-        const uint8_t* tgfi_cmd = _cmdTGFI_STRONG;
+        const uint8_t* TGFI_msg = _cmdTGFI_STRONG;
 
 	switch (target_filter_mode) {
 	case 0: // provide strongest reading
-                tgfi_cmd = _cmdTGFI_STRONG;
+                TGFI_msg = _cmdTGFI_STRONG;
                 PX4_DEBUG("target filter mode: strongest");
                 break;
         case 1: // provide nearest reading
-                tgfi_cmd = _cmdTGFI_NEAR;
+                TGFI_msg = _cmdTGFI_NEAR;
                 PX4_DEBUG("target filter mode: nearest");
                 break;
         case 2: // provide farthest reading
-                tgfi_cmd = _cmdTGFI_FAR;
+                TGFI_msg = _cmdTGFI_FAR;
                 PX4_DEBUG("target filter mode: farthest");
                 break;
         default:
-                tgfi_cmd = _cmdTGFI_STRONG;
+                TGFI_msg = _cmdTGFI_STRONG;
                 PX4_DEBUG("target filter mode: default fallback (strongest)");
         }
 
-	bytes_written = ::write(_file_descriptor, tgfi_cmd, sizeof(tgfi_cmd));
+	bytes_written = ::write(_file_descriptor, TGFI_msg, sizeof(TGFI_msg));
 
-	if (bytes_written != sizeof(tgfi_cmd)) {
+	if (bytes_written != sizeof(TGFI_msg)) {
 		perf_count(_comms_errors);
-		PX4_DEBUG("tgfi cmd write fail %d", bytes_written);
+		PX4_DEBUG("TGFI cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
+
+        // TODO: check for response from sensor
+
+        // Wait for a while (50 ms)
+        px4_usleep(50000);
+
+        int32_t max_range_mode = 0;
+	param_get(param_find("SENS_VLD1_RNG"), &max_range_mode);
+
+        const uint8_t* RRAI_msg = _cmdRRAI20;
+
+	switch (target_filter_mode) {
+	case 0: // 20 m setting
+                RRAI_msg = _cmdRRAI20;
+                PX4_DEBUG("max range mode: 20 m");
+                break;
+        case 1: // 50 m setting
+                RRAI_msg = _cmdRRAI50;
+                PX4_DEBUG("max range mode: 50 m");
+                break;
+        default:
+                RRAI_msg = _cmdRRAI20;
+                PX4_DEBUG("max range mode: default fallback (20 m)");
+        }
+
+	bytes_written = ::write(_file_descriptor, RRAI_msg, sizeof(RRAI_msg));
+
+	if (bytes_written != sizeof(RRAI_msg)) {
+		perf_count(_comms_errors);
+		PX4_DEBUG("RRAI cmd write fail %d", bytes_written);
+		return bytes_written;
+	}
+
+        // TODO: check for response from sensor
 
 	return PX4_OK;
 
@@ -90,7 +126,7 @@ int RFbeamVLD1::init()
 
 int RFbeamVLD1::measure()
 {
-        // Flush the receive buffer
+        // Flush the receive buffer // TODO: not sure if this is necessary
 	tcflush(_file_descriptor, TCIFLUSH);
 
 	int bytes_written = ::write(_file_descriptor, _cmdGNFD, sizeof(_cmdGNFD));
@@ -231,7 +267,7 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 		return PX4_ERROR;
 	}
 
-        // Flush the hardware buffers
+        // Flush the hardware buffers // TODO: not sure if this is necessary
 	tcflush(_file_descriptor, TCIOFLUSH);
 
 	PX4_INFO("successfully opened UART port %s", _port);

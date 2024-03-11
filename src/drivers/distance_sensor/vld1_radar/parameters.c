@@ -56,3 +56,18 @@ PARAM_DEFINE_INT32(SENS_EN_VLD1, 0);
  * @value 2 Farthest reading
  */
 PARAM_DEFINE_INT32(SENS_VLD1_MODE, 0);
+
+/**
+ * RFbeam V-LD1 Radar Distance Sensor (UART) *
+ *
+ * This parameter sets the maximum range in meters
+ *
+ * @reboot_required true
+ * @min 0
+ * @max 1
+ * @group Sensors
+ *
+ * @value 0 20 m
+ * @value 1 50 m
+ */
+PARAM_DEFINE_INT32(SENS_VLD1_RNG, 0);

@@ -28,6 +28,7 @@ using namespace time_literals;
 #define RFBEAM_SHORT_RANGE_FILTER   1   // on (1) or off (0); choose on to enable short range measurements of strong reflectors
 
 // Values depending on settings
+// TODO: this is hardcoded here atm
 #if RFBEAM_RANGE_SETTING_M == 20
 #define RFBEAM_MIN_DISTANCE         0.039f
 #define RFBEAM_MAX_DISTANCE         20.14f
@@ -183,27 +184,26 @@ class RFbeamVLD1 : public px4::ScheduledWorkItem {
         // {INIT, 1, 0} = 115200 bit/s
         const uint8_t _cmdINIT[INIT_PACKET_BYTES] = {0x49, 0x4E, 0x49, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00};
 
-
         // {GNFD, 1, 4}
         const uint8_t _cmdGNFD[GNFD_PACKET_BYTES] = {0x47, 0x4E, 0x46, 0x44, 0x01, 0x00, 0x00, 0x00, 0x04};
 
-
         // {PREC, 1, 1} = high precision mode (default)
         const uint8_t _cmdHIGHPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x01};
-
         // {PREC, 1, 0} = low precision mode
         const uint8_t _cmdLOWPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00};
 
-
         // {TGFI, 1, 0} = target filter: strongest first
         const uint8_t _cmdTGFI_STRONG[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
-
         // {TGFI, 1, 0} = target filter: nearest first
         const uint8_t _cmdTGFI_NEAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
 
         // {TGFI, 1, 2} = target filter: farthest first
         const uint8_t _cmdTGFI_FAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x02};
 
+        // {RRAI, 1, 0} = max distance setting: 20 m
+        const uint8_t _cmdRRAI20[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
+        // {RRAI, 1, 1} = max distance setting: 50 m
+        const uint8_t _cmdRRAI50[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
 
         // {RFSE, 0} = restore factory settings
         const uint8_t _cmdRFSE[RFSE_PACKET_BYTES] = {0x52, 0x46, 0x53, 0x45, 0x00, 0x00, 0x00, 0x00};
