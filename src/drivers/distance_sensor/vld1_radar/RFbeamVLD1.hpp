@@ -53,9 +53,9 @@ using namespace time_literals;
 #endif
 
 #if RFBEAM_SHORT_RANGE_FILTER == 1
-#define RFBEAM_MEASURE_INTERVAL     RFBEAM_FRAME_PROC_TIME + (RFBEAM_CHIRP_INTEGRATION - 1) * (3_ms + 5_ms)
+#define RFBEAM_MEASURE_INTERVAL_MS     RFBEAM_FRAME_PROC_TIME + (RFBEAM_CHIRP_INTEGRATION - 1) * (3_ms + 5_ms)
 #else
-#define RFBEAM_MEASURE_INTERVAL     RFBEAM_FRAME_PROC_TIME + (RFBEAM_CHIRP_INTEGRATION - 1) * 3_ms
+#define RFBEAM_MEASURE_INTERVAL_MS     RFBEAM_FRAME_PROC_TIME + (RFBEAM_CHIRP_INTEGRATION - 1) * 3_ms
 #endif
 
 /**
@@ -174,7 +174,7 @@ class RFbeamVLD1 : public ModuleParams, public px4::ScheduledWorkItem {
         hrt_abstime _last_read_time{0};
         hrt_abstime _read_time{0};
 
-        int _interval{RFBEAM_MEASURE_INTERVAL};
+        int _interval_us{RFBEAM_MEASURE_INTERVAL_MS * 1000};
 
         bool _collect_phase{false};
 

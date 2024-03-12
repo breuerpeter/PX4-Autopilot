@@ -1,4 +1,4 @@
-module_name: RFbeam V-LD1 Radar
+module_name: RFbeam V-LD1 Radar Distance Sensor
 serial_config:
     - command: vld1_radar start -d ${SERIAL_DEV}
       port_config_param:

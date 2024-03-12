@@ -41,6 +41,9 @@ RFbeamVLD1::~RFbeamVLD1()
 
 int RFbeamVLD1::init()
 {
+	// Open serial port before writing to it
+	open_serial_port();
+
 	int bytes_written = ::write(_file_descriptor, _cmdINIT, sizeof(_cmdINIT));
 
 	if (bytes_written != sizeof(_cmdINIT)) {
@@ -177,7 +180,7 @@ int RFbeamVLD1::collect()
 		perf_end(_sample_perf);
 
 		// Throw an error on timeout
-		if (read_elapsed > (_interval * 2)) {
+		if (read_elapsed > (_interval_us * 2)) {
 			return bytes_read;
 
 		} else {
@@ -311,7 +314,7 @@ void RFbeamVLD1::Run()
 	_collect_phase = true;
 
 	// Schedule a fresh cycle call when the measurement is done
-	ScheduleDelayed(_interval);
+	ScheduleDelayed(_interval_us);
 }
 
 void RFbeamVLD1::start()
