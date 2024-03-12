@@ -1,3 +1,5 @@
+#define DEBUG_BUILD
+
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module.h>
 
@@ -11,28 +13,28 @@ static int start(const char *port, uint8_t rotation)
 {
 	if (g_dev != nullptr) {
 		PX4_WARN("already started");
-		return -1;
+		return PX4_ERROR;
 	}
 
 	if (port == nullptr) {
 		PX4_ERR("serial port required");
-		return -1;
+		return PX4_ERROR;
 	}
 
 	// Instantiate the driver
 	g_dev = new RFbeamVLD1(port, rotation);
 
 	if (g_dev == nullptr) {
-		return -1;
+		return PX4_ERROR;
 	}
 
 	if (g_dev->init() != PX4_OK) {
 		delete g_dev;
 		g_dev = nullptr;
-		return -1;
+		return PX4_ERROR;
 	}
 
-	return 0;
+	return PX4_OK;
 }
 
 static int stop()
@@ -42,22 +44,22 @@ static int stop()
 		g_dev = nullptr;
 
 	} else {
-		return -1;
+		return PX4_ERROR;
 	}
 
-	return 0;
+	return PX4_OK;
 }
 
 static int status()
 {
 	if (g_dev == nullptr) {
 		PX4_ERR("driver not running");
-		return -1;
+		return PX4_ERROR;
 	}
 
 	g_dev->print_info();
 
-	return 0;
+	return PX4_OK;
 }
 
 static int usage()

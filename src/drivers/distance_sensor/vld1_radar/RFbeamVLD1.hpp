@@ -7,7 +7,10 @@
 #include <lib/drivers/rangefinder/PX4Rangefinder.hpp>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <drivers/drv_hrt.h>
-#include <lib/parameters/param.h>
+#include <px4_platform_common/module_params.h>
+#include <uORB/topics/parameter_update.h>
+#include <uORB/Subscription.hpp>
+#include <px4_platform_common/module.h>
 
 // TODO: figure out what the following includes are for/if needed at all
 #include <fcntl.h>
@@ -94,7 +97,7 @@ struct __attribute__((__packed__)) reading_msg {
         uint16_t mag;
 };
 
-class RFbeamVLD1 : public px4::ScheduledWorkItem {
+class RFbeamVLD1 : public ModuleParams, public px4::ScheduledWorkItem {
        public:
         /**
          * @brief Default constructor
@@ -207,4 +210,12 @@ class RFbeamVLD1 : public px4::ScheduledWorkItem {
 
         // {RFSE, 0} = restore factory settings
         const uint8_t _cmdRFSE[RFSE_PACKET_BYTES] = {0x52, 0x46, 0x53, 0x45, 0x00, 0x00, 0x00, 0x00};
+
+        uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
+
+        DEFINE_PARAMETERS(
+        (ParamInt<px4::params::SENS_EN_VLD1>)    _param_sensor_enabled,
+        (ParamInt<px4::params::SENS_VLD1_MODE>)  _param_sensor_mode,
+        (ParamInt<px4::params::SENS_VLD1_RNG>)  _param_sensor_range
+);
 };

@@ -1,10 +1,12 @@
+#define DEBUG_BUILD
+
 #include "RFbeamVLD1.hpp"
 
 // TODO: figure out why this is not in header file
 #include <lib/drivers/device/Device.hpp>
 
 RFbeamVLD1::RFbeamVLD1(const char *port, uint8_t rotation)
-	: ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)), _px4_rangefinder(0, rotation)
+	: ModuleParams(nullptr), ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)), _px4_rangefinder(0, rotation)
 {
 	// Store port name
 	strncpy(_port, port, sizeof(_port) - 1);
@@ -39,8 +41,6 @@ RFbeamVLD1::~RFbeamVLD1()
 
 int RFbeamVLD1::init()
 {
-	start();
-
 	int bytes_written = ::write(_file_descriptor, _cmdINIT, sizeof(_cmdINIT));
 
 	if (bytes_written != sizeof(_cmdINIT)) {
@@ -49,33 +49,39 @@ int RFbeamVLD1::init()
 		return bytes_written;
 	}
 
-        // TODO: check for response from sensor
+	// TODO: check for response from sensor
 
-        // Wait for a while (50 ms)
-        px4_usleep(50000);
+	// Wait for a while (50 ms)
+	px4_usleep(50000);
 
-        int32_t target_filter_mode = 0;
-	param_get(param_find("SENS_VLD1_MODE"), &target_filter_mode);
+	// int32_t target_filter_mode = 0;
+	// param_get(param_find("SENS_VLD1_MODE"), &target_filter_mode);
 
-        const uint8_t* TGFI_msg = _cmdTGFI_STRONG;
+	const uint8_t *TGFI_msg = _cmdTGFI_STRONG;
 
-	switch (target_filter_mode) {
+	// Update parameter values (only this one time)
+	ModuleParams::updateParams();
+
+	switch (_param_sensor_mode.get()) {
 	case 0: // provide strongest reading
-                TGFI_msg = _cmdTGFI_STRONG;
-                PX4_DEBUG("target filter mode: strongest");
-                break;
-        case 1: // provide nearest reading
-                TGFI_msg = _cmdTGFI_NEAR;
-                PX4_DEBUG("target filter mode: nearest");
-                break;
-        case 2: // provide farthest reading
-                TGFI_msg = _cmdTGFI_FAR;
-                PX4_DEBUG("target filter mode: farthest");
-                break;
-        default:
-                TGFI_msg = _cmdTGFI_STRONG;
-                PX4_DEBUG("target filter mode: default fallback (strongest)");
-        }
+		TGFI_msg = _cmdTGFI_STRONG;
+		PX4_DEBUG("target filter mode: strongest");
+		break;
+
+	case 1: // provide nearest reading
+		TGFI_msg = _cmdTGFI_NEAR;
+		PX4_DEBUG("target filter mode: nearest");
+		break;
+
+	case 2: // provide farthest reading
+		TGFI_msg = _cmdTGFI_FAR;
+		PX4_DEBUG("target filter mode: farthest");
+		break;
+
+	default:
+		TGFI_msg = _cmdTGFI_STRONG;
+		PX4_DEBUG("target filter mode: default fallback (strongest)");
+	}
 
 	bytes_written = ::write(_file_descriptor, TGFI_msg, sizeof(TGFI_msg));
 
@@ -85,29 +91,31 @@ int RFbeamVLD1::init()
 		return bytes_written;
 	}
 
-        // TODO: check for response from sensor
+	// TODO: check for response from sensor
 
-        // Wait for a while (50 ms)
-        px4_usleep(50000);
+	// Wait for a while (50 ms)
+	px4_usleep(50000);
 
-        int32_t max_range_mode = 0;
-	param_get(param_find("SENS_VLD1_RNG"), &max_range_mode);
+	// int32_t max_range_mode = 0;
+	// param_get(param_find("SENS_VLD1_RNG"), &max_range_mode);
 
-        const uint8_t* RRAI_msg = _cmdRRAI20;
+	const uint8_t *RRAI_msg = _cmdRRAI20;
 
-	switch (target_filter_mode) {
+	switch (_param_sensor_range.get()) {
 	case 0: // 20 m setting
-                RRAI_msg = _cmdRRAI20;
-                PX4_DEBUG("max range mode: 20 m");
-                break;
-        case 1: // 50 m setting
-                RRAI_msg = _cmdRRAI50;
-                PX4_DEBUG("max range mode: 50 m");
-                break;
-        default:
-                RRAI_msg = _cmdRRAI20;
-                PX4_DEBUG("max range mode: default fallback (20 m)");
-        }
+		RRAI_msg = _cmdRRAI20;
+		PX4_DEBUG("max range mode: 20 m");
+		break;
+
+	case 1: // 50 m setting
+		RRAI_msg = _cmdRRAI50;
+		PX4_DEBUG("max range mode: 50 m");
+		break;
+
+	default:
+		RRAI_msg = _cmdRRAI20;
+		PX4_DEBUG("max range mode: default fallback (20 m)");
+	}
 
 	bytes_written = ::write(_file_descriptor, RRAI_msg, sizeof(RRAI_msg));
 
@@ -117,16 +125,18 @@ int RFbeamVLD1::init()
 		return bytes_written;
 	}
 
-        // TODO: check for response from sensor
+	start();
+
+	// TODO: check for response from sensor
 
 	return PX4_OK;
 
-        // TODO: e.g. LeddarOne driver has more thorough init routine
+	// TODO: e.g. LeddarOne driver has more thorough init routine
 }
 
 int RFbeamVLD1::measure()
 {
-        // Flush the receive buffer // TODO: not sure if this is necessary
+	// Flush the receive buffer // TODO: not sure if this is necessary
 	tcflush(_file_descriptor, TCIFLUSH);
 
 	int bytes_written = ::write(_file_descriptor, _cmdGNFD, sizeof(_cmdGNFD));
@@ -137,7 +147,7 @@ int RFbeamVLD1::measure()
 		return bytes_written;
 	}
 
-        _read_buffer_len = 0;
+	_read_buffer_len = 0;
 	return PX4_OK;
 }
 
@@ -147,12 +157,12 @@ int RFbeamVLD1::collect()
 
 	int64_t read_elapsed = hrt_elapsed_time(&_last_read_time);
 
-        _read_time = hrt_absolute_time(); // TODO: e.g. LeddarOne driver sets timestamp in measure()
+	_read_time = hrt_absolute_time(); // TODO: e.g. LeddarOne driver sets timestamp in measure()
 
-        const int buffer_size = sizeof(_read_buffer);
+	const int buffer_size = sizeof(_read_buffer);
 	const int message_size = sizeof(reading_msg);
 
-        int bytes_read = ::read(_file_descriptor, _read_buffer + _read_buffer_len, buffer_size - _read_buffer_len);
+	int bytes_read = ::read(_file_descriptor, _read_buffer + _read_buffer_len, buffer_size - _read_buffer_len);
 
 	/* // Buffer for reading chars is buffer length minus null termination
 	char readbuf[sizeof(_read_buffer)]; // TODO: why is this step even needed?
@@ -178,16 +188,16 @@ int RFbeamVLD1::collect()
 		return -EAGAIN;
 	}
 
-        _read_buffer_len += bytes_read;
+	_read_buffer_len += bytes_read;
 
 	if (_read_buffer_len < message_size) {
 		// Return on next scheduled cycle to collect remaining data
 		return PX4_OK;
 	}
 
-        _last_read_time = hrt_absolute_time();
+	_last_read_time = hrt_absolute_time();
 
-        // reading_msg *msg {nullptr};
+	// reading_msg *msg {nullptr};
 	// msg = (reading_msg *)_read_buffer;
 
 	// float distance_m = msg->distance;
@@ -267,7 +277,7 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 		return PX4_ERROR;
 	}
 
-        // Flush the hardware buffers // TODO: not sure if this is necessary
+	// Flush the hardware buffers // TODO: not sure if this is necessary
 	tcflush(_file_descriptor, TCIOFLUSH);
 
 	PX4_INFO("successfully opened UART port %s", _port);

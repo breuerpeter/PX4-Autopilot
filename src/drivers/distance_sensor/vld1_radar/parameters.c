@@ -42,7 +42,7 @@
 PARAM_DEFINE_INT32(SENS_EN_VLD1, 0);
 
 /**
- * RFbeam V-LD1 Radar Distance Sensor (UART) *
+ * Configure target filter of RFbeam V-LD1 radar distance sensor
  *
  * This parameter configures the reading (strongest, nearest or farthest) to use
  *
@@ -58,7 +58,7 @@ PARAM_DEFINE_INT32(SENS_EN_VLD1, 0);
 PARAM_DEFINE_INT32(SENS_VLD1_MODE, 0);
 
 /**
- * RFbeam V-LD1 Radar Distance Sensor (UART) *
+ * Set maximum range of RFbeam V-LD1 radar distance sensor
  *
  * This parameter sets the maximum range in meters
  *
