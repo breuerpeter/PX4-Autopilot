@@ -166,7 +166,7 @@ class RFbeamVLD1 : public ModuleParams, public px4::ScheduledWorkItem {
 
         char _port[20]{};
 
-        int _file_descriptor{-1};
+        int _fd{-1};
 
         uint8_t _read_buffer[sizeof(reading_msg)];
         uint8_t _read_buffer_len{0};

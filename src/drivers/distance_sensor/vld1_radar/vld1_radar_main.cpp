@@ -1,5 +1,3 @@
-#define DEBUG_BUILD
-
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module.h>
 
