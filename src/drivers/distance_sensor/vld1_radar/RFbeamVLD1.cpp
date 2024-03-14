@@ -42,9 +42,9 @@ int RFbeamVLD1::init()
 	// Open serial port before writing to it
 	open_serial_port();
 
-	int bytes_written = ::write(_fd, _cmdINIT, sizeof(_cmdINIT));
+	int bytes_written = ::write(_fd, _cmdINIT, INIT_PACKET_BYTES);
 
-	if (bytes_written != sizeof(_cmdINIT)) {
+	if (bytes_written != INIT_PACKET_BYTES) {
 		perf_count(_comms_errors);
 		PX4_INFO("DEBUG: init cmd write fail %d", bytes_written);
 		return bytes_written;
@@ -55,7 +55,7 @@ int RFbeamVLD1::init()
 	// Wait for a while (50 ms)
 	px4_usleep(50000);
 
-	const uint8_t *TGFI_msg = _cmdTGFI_STRONG;
+	uint8_t *TGFI_msg = _cmdTGFI_STRONG;
 
 	// Update parameter values (only this one time)
 	ModuleParams::updateParams();
@@ -85,10 +85,10 @@ int RFbeamVLD1::init()
 		PX4_INFO("DEBUG: target filter mode: default fallback (strongest)");
 	}
 
-	bytes_written = ::write(_fd, TGFI_msg, sizeof(TGFI_msg));
-	PX4_INFO("DEBUG: TGFI message size: %d", sizeof(TGFI_msg));
+	bytes_written = ::write(_fd, TGFI_msg, TGFI_PACKET_BYTES);
+	PX4_INFO("DEBUG: TGFI message size: %d", TGFI_PACKET_BYTES);
 
-	if (bytes_written != sizeof(TGFI_msg)) {
+	if (bytes_written != TGFI_PACKET_BYTES) {
 		perf_count(_comms_errors);
 		PX4_INFO("DEBUG: TGFI cmd write fail %d", bytes_written);
 		return bytes_written;
@@ -99,7 +99,7 @@ int RFbeamVLD1::init()
 	// Wait for a while (50 ms)
 	px4_usleep(50000);
 
-	const uint8_t *RRAI_msg = _cmdRRAI20;
+	uint8_t *RRAI_msg = _cmdRRAI20;
 
 	switch (_param_sensor_range.get()) {
 	case 0: // 20 m setting
@@ -122,10 +122,10 @@ int RFbeamVLD1::init()
 		PX4_INFO("DEBUG: max range mode: default fallback (20 m)");
 	}
 
-	bytes_written = ::write(_fd, RRAI_msg, sizeof(RRAI_msg));
-	PX4_INFO("DEBUG: RRAI message size: %d", sizeof(RRAI_msg));
+	bytes_written = ::write(_fd, RRAI_msg, RRAI_PACKET_BYTES);
+	PX4_INFO("DEBUG: RRAI message size: %d", RRAI_PACKET_BYTES);
 
-	if (bytes_written != sizeof(RRAI_msg)) {
+	if (bytes_written != RRAI_PACKET_BYTES) {
 		perf_count(_comms_errors);
 		PX4_INFO("DEBUG: RRAI cmd write fail %d", bytes_written);
 		return bytes_written;
