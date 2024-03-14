@@ -177,7 +177,7 @@ private:
 	hrt_abstime _last_read_time = 0;
 	hrt_abstime _read_time = 0;
 
-	int _interval_us = RFBEAM_MEASURE_INTERVAL_MS * 1000;
+	int _interval_us = 1.5 * RFBEAM_MEASURE_INTERVAL_MS * 1000; // factor 1.5 to give sensor extra time
 
 	bool _collect_phase = false;
 

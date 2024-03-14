@@ -150,11 +150,8 @@ int RFbeamVLD1::measure()
 
 	if (bytes_written != GNFD_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: measure cmd write fail %d", bytes_written);
+		PX4_DEBUG("measure cmd write fail %d", bytes_written);
 		return bytes_written;
-	}
-	else {
-		PX4_INFO("DEBUG: measure cmd write success %d", bytes_written);
 	}
 
 	_read_buffer_len = 0;
@@ -344,12 +341,8 @@ void RFbeamVLD1::Run()
 
 	_print = false;
 
-	char cmd = 'd';
-	int test = ::write(_fd, &cmd, 1);
-
-	if (test != sizeof(cmd)) {
-		perf_count(_comms_errors);
-		PX4_DEBUG("write fail %d", test);
+	if (measure() != PX4_OK) {
+		PX4_INFO("DEBUG: measure error");
 	}
 
 	/* // Collection phase
