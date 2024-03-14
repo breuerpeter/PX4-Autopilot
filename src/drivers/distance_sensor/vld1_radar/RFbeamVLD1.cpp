@@ -52,7 +52,7 @@ int RFbeamVLD1::init()
 
 	// TODO: check for response from sensor
 
-	// Wait for a while (50 ms)
+	// Wait to give the sensor some time to process (50 ms)
 	px4_usleep(50000);
 
 	uint8_t *TGFI_msg = _cmdTGFI_STRONG;
@@ -62,25 +62,21 @@ int RFbeamVLD1::init()
 
 	switch (_param_sensor_mode.get()) {
 	case 0: // provide strongest reading
-		// bytes_written = ::write(_fd, _cmdTGFI_STRONG, sizeof(_cmdTGFI_STRONG));
 		TGFI_msg = _cmdTGFI_STRONG;
 		PX4_INFO("DEBUG: target filter mode: strongest");
 		break;
 
 	case 1: // provide nearest reading
-		// bytes_written = ::write(_fd, _cmdTGFI_NEAR, sizeof(_cmdTGFI_NEAR));
 		TGFI_msg = _cmdTGFI_NEAR;
 		PX4_INFO("DEBUG: target filter mode: nearest");
 		break;
 
 	case 2: // provide farthest reading
-		// bytes_written = ::write(_fd, _cmdTGFI_FAR, sizeof(_cmdTGFI_FAR));
 		TGFI_msg = _cmdTGFI_FAR;
 		PX4_INFO("DEBUG: target filter mode: farthest");
 		break;
 
 	default:
-		// bytes_written = ::write(_fd, _cmdTGFI_STRONG, sizeof(_cmdTGFI_STRONG));
 		TGFI_msg = _cmdTGFI_STRONG;
 		PX4_INFO("DEBUG: target filter mode: default fallback (strongest)");
 	}
@@ -96,28 +92,23 @@ int RFbeamVLD1::init()
 
 	// TODO: check for response from sensor
 
-	// Wait for a while (50 ms)
+	// Wait to give the sensor some time to process (50 ms)
 	px4_usleep(50000);
 
 	uint8_t *RRAI_msg = _cmdRRAI20;
 
 	switch (_param_sensor_range.get()) {
 	case 0: // 20 m setting
-		// bytes_written = ::write(_fd, _cmdRRAI20, sizeof(_cmdRRAI20));
 		RRAI_msg = _cmdRRAI20;
 		PX4_INFO("DEBUG: max range mode: 20 m");
-		//PX4_INFO("DEBUG: RRAI msg size: %d", sizeof(_cmdRRAI20));
 		break;
 
 	case 1: // 50 m setting
-		// bytes_written = ::write(_fd, _cmdRRAI50, sizeof(_cmdRRAI50));
 		RRAI_msg = _cmdRRAI50;
 		PX4_INFO("DEBUG: max range mode: 50 m");
-		//PX4_INFO("DEBUG: RRAI msg size: %d", sizeof(_cmdRRAI50));
 		break;
 
 	default:
-		// bytes_written = ::write(_fd, _cmdRRAI20, sizeof(_cmdRRAI20));
 		RRAI_msg = _cmdRRAI20;
 		PX4_INFO("DEBUG: max range mode: default fallback (20 m)");
 	}
@@ -131,6 +122,16 @@ int RFbeamVLD1::init()
 		return bytes_written;
 	}
 
+	PX4_INFO("DEBUG: init: before close, fd: %d", _fd);
+	_print = true;
+
+	// Close the fd
+	::close(_fd);
+	_fd = -1;
+
+	// Wait to give the sensor some time to process (50 ms)
+	px4_usleep(50000);
+
 	start();
 
 	// TODO: check for response from sensor
@@ -143,18 +144,18 @@ int RFbeamVLD1::init()
 int RFbeamVLD1::measure()
 {
 	// Flush the receive buffer
-	tcflush(_fd, TCIFLUSH);
+	// tcflush(_fd, TCIFLUSH);
 
-	int bytes_written = ::write(_fd, _cmdGNFD, sizeof(_cmdGNFD));
+	int bytes_written = ::write(_fd, _cmdGNFD, GNFD_PACKET_BYTES);
 
-	if (bytes_written != sizeof(_cmdGNFD)) {
+	if (bytes_written != GNFD_PACKET_BYTES) {
 		perf_count(_comms_errors);
 		PX4_INFO("DEBUG: measure cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
-	/* else {
-		PX4_INFO("DEBUG: measure cmd write success %d", bytes_written); // TODO: reactivate
-	} */
+	else {
+		PX4_INFO("DEBUG: measure cmd write success %d", bytes_written);
+	}
 
 	_read_buffer_len = 0;
 	return PX4_OK;
@@ -229,7 +230,7 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 {
 	// Skip the rest if  descriptor already initialized
 	if (_fd > 0) {
-		// PX4_INFO("DEBUG: serial port already open"); // TODO: reactivate
+		PX4_DEBUG("serial port already open");
 		return PX4_OK;
 	}
 
@@ -249,7 +250,9 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 		return PX4_ERROR;
 	}
 
-	termios uart_config = {};
+	struct termios uart_config;
+
+	int termios_state;
 
 	// Store the current port configuration attributes
 	tcgetattr(_fd, &uart_config);
@@ -259,23 +262,23 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 	No NL to CR translation, don't mark parity errors or breaks
 	No input parity check, don't strip high bit off,
 	No XON/XOFF software flow control */
-	uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON | IXOFF | IXANY);
+	// uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON | IXOFF | IXANY);
 
 	// Output flags (turn off output processing):
-	uart_config.c_oflag &= ~OPOST;
+	// uart_config.c_oflag &= ~OPOST;
 	// uart_config.c_oflag = 0;
 	// Clear ONLCR flag (which appends a CR for every LF)
-	// uart_config.c_oflag &= ~ONLCR;
+	uart_config.c_oflag &= ~ONLCR;
 
 	// 8 data bits
-	uart_config.c_cflag &= ~CSIZE;
-	uart_config.c_cflag |= CS8;
+	// uart_config.c_cflag &= ~CSIZE;
+	// uart_config.c_cflag |= CS8;
 
 	// Enable receiver
-	uart_config.c_cflag |= CREAD;
+	// uart_config.c_cflag |= CREAD;
 
 	// Ignore modem status lines
-	uart_config.c_cflag |= CLOCAL;
+	// uart_config.c_cflag |= CLOCAL;
 
 	// One stop bit (clear 2 stop bits flag)
 	uart_config.c_cflag &= ~CSTOPB;
@@ -290,10 +293,10 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 	/* Turn off line processing:
 	Echo off, echo newline off, canonical mode off, extended input processing off, signal chars off
 	*/
-	uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+	// uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
 
 	// Set the input baud rate in the uart_config struct
-	int termios_state = cfsetispeed(&uart_config, speed);
+	termios_state = cfsetispeed(&uart_config, speed);
 
 	if (termios_state < 0) {
 		PX4_ERR("CFG: %d ISPD", termios_state);
@@ -320,7 +323,7 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 	}
 
 	// Flush the hardware buffers // TODO: not sure if this is necessary
-	tcflush(_fd, TCIOFLUSH);
+	// tcflush(_fd, TCIOFLUSH);
 
 	PX4_INFO("successfully opened UART port %s", _port);
 	return PX4_OK;
@@ -328,10 +331,28 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 
 void RFbeamVLD1::Run()
 {
+	if(_print) {
+		PX4_INFO("DEBUG: Run: before openserialport, fd: %d", _fd);
+	}
+
 	// Ensure the serial port is open
 	open_serial_port();
 
-	// Collection phase
+	if(_print) {
+		PX4_INFO("DEBUG: Run: after openserialport, fd: %d", _fd);
+	}
+
+	_print = false;
+
+	char cmd = 'd';
+	int test = ::write(_fd, &cmd, 1);
+
+	if (test != sizeof(cmd)) {
+		perf_count(_comms_errors);
+		PX4_DEBUG("write fail %d", test);
+	}
+
+	/* // Collection phase
 	if (_collect_phase) {
 		int ret = collect();
 
@@ -364,7 +385,7 @@ void RFbeamVLD1::Run()
 	}
 
 	// Next phase is collection
-	_collect_phase = true;
+	_collect_phase = true; */
 
 	// Schedule a fresh cycle call when the measurement is done
 	ScheduleDelayed(_interval_us);

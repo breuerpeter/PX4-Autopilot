@@ -169,6 +169,8 @@ private:
 
 	int _fd = -1;
 
+	bool _print = true;
+
 	uint8_t _read_buffer[sizeof(reading_msg)] = {};
 	uint8_t _read_buffer_len = 0;
 

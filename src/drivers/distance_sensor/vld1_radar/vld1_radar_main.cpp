@@ -23,10 +23,12 @@ static int start(const char *port, uint8_t rotation)
 	g_dev = new RFbeamVLD1(port, rotation);
 
 	if (g_dev == nullptr) {
+                PX4_ERR("driver start failed");
 		return PX4_ERROR;
 	}
 
 	if (g_dev->init() != PX4_OK) {
+                PX4_ERR("driver start failed");
 		delete g_dev;
 		g_dev = nullptr;
 		return PX4_ERROR;
@@ -38,8 +40,10 @@ static int start(const char *port, uint8_t rotation)
 static int stop()
 {
 	if (g_dev != nullptr) {
+                PX4_INFO("stopping driver");
 		delete g_dev;
 		g_dev = nullptr;
+                PX4_INFO("driver stopped");
 
 	} else {
 		return PX4_ERROR;
