@@ -93,129 +93,130 @@ using namespace time_literals;
 #define DONE_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 4 * sizeof(uint32_t)     // Payload length for DONE command
 
 struct __attribute__((__packed__)) reading_msg {
-        float distance;
-        uint16_t mag;
+	float distance;
+	uint16_t mag;
 };
 
-class RFbeamVLD1 : public ModuleParams, public px4::ScheduledWorkItem {
-       public:
-        /**
-         * @brief Default constructor
-         *
-         * @param port The serial port to open for communicating with the sensor.
-         * @param rotation The sensor rotation relative to the vehicle body.
-         */
-        RFbeamVLD1(const char *port, uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING);
-        ~RFbeamVLD1() override;
+class RFbeamVLD1 : public ModuleParams, public px4::ScheduledWorkItem
+{
+public:
+	/**
+	 * @brief Default constructor
+	 *
+	 * @param port The serial port to open for communicating with the sensor.
+	 * @param rotation The sensor rotation relative to the vehicle body.
+	 */
+	RFbeamVLD1(const char *port, uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING);
+	~RFbeamVLD1() override;
 
-        /**
-         * @brief Send INIT command to sensor
-         *
-         * @return int
-         */
-        int init();
+	/**
+	 * @brief Send INIT command to sensor
+	 *
+	 * @return int
+	 */
+	int init();
 
-        /**
-         * @brief Print some basic information about the driver.
-         *
-         */
-        void print_info();
+	/**
+	 * @brief Print some basic information about the driver.
+	 *
+	 */
+	void print_info();
 
-       private:
-        /**
-         * @brief Reads data from serial UART and places it into a buffer.
-         *
-         * @return int
-         */
-        int collect();
+private:
+	/**
+	 * @brief Reads data from serial UART and places it into a buffer.
+	 *
+	 * @return int
+	 */
+	int collect();
 
-        /**
-         * @brief Send command to obtain reading from sensor.
-         *
-         * @return int
-         */
-        int measure();
+	/**
+	 * @brief Send command to obtain reading from sensor.
+	 *
+	 * @return int
+	 */
+	int measure();
 
-        /**
-         * @brief Opens and configures the serial communications port.
-         *
-         * @param speed The baudrate (speed) to configure the serial UART port.
-         * @return int
-         */
-        int open_serial_port(const speed_t speed = B115200);
+	/**
+	 * @brief Opens and configures the serial communications port.
+	 *
+	 * @param speed The baudrate (speed) to configure the serial UART port.
+	 * @return int
+	 */
+	int open_serial_port(const speed_t speed = B115200);
 
-        /**
-         * @brief Request or read measurement at intervals
-         *
-         */
-        void Run() override;
+	/**
+	 * @brief Request or read measurement at intervals
+	 *
+	 */
+	void Run() override;
 
-        /**
-         * @brief Initialise the automatic measurement state machine and start it.
-         *
-         */
-        void start();
+	/**
+	 * @brief Initialise the automatic measurement state machine and start it.
+	 *
+	 */
+	void start();
 
-        /**
-         * @brief Stop the automatic measurement state machine.
-         *
-         */
-        void stop();
+	/**
+	 * @brief Stop the automatic measurement state machine.
+	 *
+	 */
+	void stop();
 
-        PX4Rangefinder _px4_rangefinder;
+	PX4Rangefinder _px4_rangefinder;
 
-        char _port[20]{};
+	char _port[20] = {};
 
-        int _fd{-1};
+	int _fd = -1;
 
-        uint8_t _read_buffer[sizeof(reading_msg)];
-        uint8_t _read_buffer_len{0};
+	uint8_t _read_buffer[sizeof(reading_msg)] = {};
+	uint8_t _read_buffer_len = 0;
 
-        hrt_abstime _last_read_time{0};
-        hrt_abstime _read_time{0};
+	hrt_abstime _last_read_time = 0;
+	hrt_abstime _read_time = 0;
 
-        int _interval_us{RFBEAM_MEASURE_INTERVAL_MS * 1000};
+	int _interval_us = RFBEAM_MEASURE_INTERVAL_MS * 1000;
 
-        bool _collect_phase{false};
+	bool _collect_phase = false;
 
-        perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME ": comm_err")};
-        perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": read")};
+	perf_counter_t _comms_errors = perf_alloc(PC_COUNT, MODULE_NAME ": comm_err");
+	perf_counter_t _sample_perf = perf_alloc(PC_ELAPSED, MODULE_NAME ": read");
 
-        // std::array<uint8_t, NO_BYTES> _cmdINIT = {...}
-        // TODO: length of arrays not necessary
+	// std::array<uint8_t, NO_BYTES> _cmdINIT = {...}
+	// TODO: length of arrays not necessary
 
-        // {INIT, 1, 0} = 115200 bit/s
-        const uint8_t _cmdINIT[INIT_PACKET_BYTES] = {0x49, 0x4E, 0x49, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00};
+	// {INIT, 1, 0} = 115200 bit/s
+	const uint8_t _cmdINIT[INIT_PACKET_BYTES] = {0x49, 0x4E, 0x49, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00};
 
-        // {GNFD, 1, 4}
-        const uint8_t _cmdGNFD[GNFD_PACKET_BYTES] = {0x47, 0x4E, 0x46, 0x44, 0x01, 0x00, 0x00, 0x00, 0x04};
+	// {GNFD, 1, 4}
+	const uint8_t _cmdGNFD[GNFD_PACKET_BYTES] = {0x47, 0x4E, 0x46, 0x44, 0x01, 0x00, 0x00, 0x00, 0x04};
 
-        // {PREC, 1, 1} = high precision mode (default)
-        const uint8_t _cmdHIGHPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x01};
-        // {PREC, 1, 0} = low precision mode
-        const uint8_t _cmdLOWPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00};
+	// {PREC, 1, 1} = high precision mode (default)
+	const uint8_t _cmdHIGHPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x01};
+	// {PREC, 1, 0} = low precision mode
+	const uint8_t _cmdLOWPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00};
 
-        // {TGFI, 1, 0} = target filter: strongest first
-        const uint8_t _cmdTGFI_STRONG[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
-        // {TGFI, 1, 0} = target filter: nearest first
-        const uint8_t _cmdTGFI_NEAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
+	// {TGFI, 1, 0} = target filter: strongest first
+	const uint8_t _cmdTGFI_STRONG[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
+	// {TGFI, 1, 0} = target filter: nearest first
+	const uint8_t _cmdTGFI_NEAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
 
-        // {TGFI, 1, 2} = target filter: farthest first
-        const uint8_t _cmdTGFI_FAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x02};
+	// {TGFI, 1, 2} = target filter: farthest first
+	const uint8_t _cmdTGFI_FAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x02};
 
-        // {RRAI, 1, 0} = max distance setting: 20 m
-        const uint8_t _cmdRRAI20[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
-        // {RRAI, 1, 1} = max distance setting: 50 m
-        const uint8_t _cmdRRAI50[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
+	// {RRAI, 1, 0} = max distance setting: 20 m
+	const uint8_t _cmdRRAI20[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
+	// {RRAI, 1, 1} = max distance setting: 50 m
+	const uint8_t _cmdRRAI50[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
 
-        // {RFSE, 0} = restore factory settings
-        const uint8_t _cmdRFSE[RFSE_PACKET_BYTES] = {0x52, 0x46, 0x53, 0x45, 0x00, 0x00, 0x00, 0x00};
+	// {RFSE, 0} = restore factory settings
+	const uint8_t _cmdRFSE[RFSE_PACKET_BYTES] = {0x52, 0x46, 0x53, 0x45, 0x00, 0x00, 0x00, 0x00};
 
-        uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::Subscription _parameter_update_sub = ORB_ID(parameter_update);
 
-        DEFINE_PARAMETERS(
-        (ParamInt<px4::params::SENS_EN_VLD1>)    _param_sensor_enabled,
-        (ParamInt<px4::params::SENS_VLD1_MODE>)  _param_sensor_mode,
-        (ParamInt<px4::params::SENS_VLD1_RNG>)  _param_sensor_range
-);
+	DEFINE_PARAMETERS(
+		(ParamInt<px4::params::SENS_EN_VLD1>)    _param_sensor_enabled,
+		(ParamInt<px4::params::SENS_VLD1_MODE>)  _param_sensor_mode,
+		(ParamInt<px4::params::SENS_VLD1_RNG>)  _param_sensor_range
+	);
 };

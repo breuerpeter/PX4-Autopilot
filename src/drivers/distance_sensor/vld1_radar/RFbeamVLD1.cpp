@@ -55,9 +55,6 @@ int RFbeamVLD1::init()
 	// Wait for a while (50 ms)
 	px4_usleep(50000);
 
-	// int32_t target_filter_mode = 0;
-	// param_get(param_find("SENS_VLD1_MODE"), &target_filter_mode);
-
 	const uint8_t *TGFI_msg = _cmdTGFI_STRONG;
 
 	// Update parameter values (only this one time)
@@ -65,26 +62,31 @@ int RFbeamVLD1::init()
 
 	switch (_param_sensor_mode.get()) {
 	case 0: // provide strongest reading
+		// bytes_written = ::write(_fd, _cmdTGFI_STRONG, sizeof(_cmdTGFI_STRONG));
 		TGFI_msg = _cmdTGFI_STRONG;
 		PX4_INFO("DEBUG: target filter mode: strongest");
 		break;
 
 	case 1: // provide nearest reading
+		// bytes_written = ::write(_fd, _cmdTGFI_NEAR, sizeof(_cmdTGFI_NEAR));
 		TGFI_msg = _cmdTGFI_NEAR;
 		PX4_INFO("DEBUG: target filter mode: nearest");
 		break;
 
 	case 2: // provide farthest reading
+		// bytes_written = ::write(_fd, _cmdTGFI_FAR, sizeof(_cmdTGFI_FAR));
 		TGFI_msg = _cmdTGFI_FAR;
 		PX4_INFO("DEBUG: target filter mode: farthest");
 		break;
 
 	default:
+		// bytes_written = ::write(_fd, _cmdTGFI_STRONG, sizeof(_cmdTGFI_STRONG));
 		TGFI_msg = _cmdTGFI_STRONG;
 		PX4_INFO("DEBUG: target filter mode: default fallback (strongest)");
 	}
 
 	bytes_written = ::write(_fd, TGFI_msg, sizeof(TGFI_msg));
+	PX4_INFO("DEBUG: TGFI message size: %d", sizeof(TGFI_msg));
 
 	if (bytes_written != sizeof(TGFI_msg)) {
 		perf_count(_comms_errors);
@@ -97,28 +99,31 @@ int RFbeamVLD1::init()
 	// Wait for a while (50 ms)
 	px4_usleep(50000);
 
-	// int32_t max_range_mode = 0;
-	// param_get(param_find("SENS_VLD1_RNG"), &max_range_mode);
-
 	const uint8_t *RRAI_msg = _cmdRRAI20;
 
 	switch (_param_sensor_range.get()) {
 	case 0: // 20 m setting
+		// bytes_written = ::write(_fd, _cmdRRAI20, sizeof(_cmdRRAI20));
 		RRAI_msg = _cmdRRAI20;
 		PX4_INFO("DEBUG: max range mode: 20 m");
+		//PX4_INFO("DEBUG: RRAI msg size: %d", sizeof(_cmdRRAI20));
 		break;
 
 	case 1: // 50 m setting
+		// bytes_written = ::write(_fd, _cmdRRAI50, sizeof(_cmdRRAI50));
 		RRAI_msg = _cmdRRAI50;
 		PX4_INFO("DEBUG: max range mode: 50 m");
+		//PX4_INFO("DEBUG: RRAI msg size: %d", sizeof(_cmdRRAI50));
 		break;
 
 	default:
+		// bytes_written = ::write(_fd, _cmdRRAI20, sizeof(_cmdRRAI20));
 		RRAI_msg = _cmdRRAI20;
 		PX4_INFO("DEBUG: max range mode: default fallback (20 m)");
 	}
 
 	bytes_written = ::write(_fd, RRAI_msg, sizeof(RRAI_msg));
+	PX4_INFO("DEBUG: RRAI message size: %d", sizeof(RRAI_msg));
 
 	if (bytes_written != sizeof(RRAI_msg)) {
 		perf_count(_comms_errors);
@@ -147,6 +152,9 @@ int RFbeamVLD1::measure()
 		PX4_INFO("DEBUG: measure cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
+	/* else {
+		PX4_INFO("DEBUG: measure cmd write success %d", bytes_written); // TODO: reactivate
+	} */
 
 	_read_buffer_len = 0;
 	return PX4_OK;
@@ -175,40 +183,36 @@ int RFbeamVLD1::collect()
 
 	int bytes_read = ::read(_fd, _read_buffer + _read_buffer_len, buffer_size - _read_buffer_len);
 
-	/* // Buffer for reading chars is buffer length minus null termination
-	char readbuf[sizeof(_read_buffer)]; // TODO: why is this step even needed?
-	unsigned readlen = sizeof(_read_buffer) - 1;
-
-	// Read from sensor (UART buffer)
-	int bytes_read = ::read(_fd, &_read_buffer[0], readlen); */
-
 	if (bytes_read < 0) {
-		PX4_INFO("DEBUG: read error: %d", bytes_read);
 		perf_count(_comms_errors);
 		perf_end(_sample_perf);
 
-		// Throw an error on timeout
+		// Only throw error on timeout
 		if (read_elapsed > (_interval_us * 2)) {
+			PX4_INFO("DEBUG: timeout on read");
 			return bytes_read;
 
 		} else {
+			PX4_INFO("DEBUG: read error: %d", bytes_read);
 			return -EAGAIN;
 		}
 
 	} else if (bytes_read == 0) {
+		PX4_INFO("DEBUG: 0 bytes read");
 		return -EAGAIN;
 	}
 
 	_read_buffer_len += bytes_read;
 
 	if (_read_buffer_len < message_size) {
+		PX4_INFO("DEBUG: incomplete read");
 		// Return on next scheduled cycle to collect remaining data
-		return PX4_OK;
+		return -EAGAIN;
 	}
 
 	_last_read_time = hrt_absolute_time();
 
-	// reading_msg *msg {nullptr};
+	// reading_msg *msg = nullptr;
 	// msg = (reading_msg *)_read_buffer;
 
 	// float distance_m = msg->distance;
@@ -223,9 +227,9 @@ int RFbeamVLD1::collect()
 
 int RFbeamVLD1::open_serial_port(const speed_t speed)
 {
-	// File descriptor already initialized?
+	// Skip the rest if  descriptor already initialized
 	if (_fd > 0) {
-		PX4_INFO("DEBUG: serial port already open");
+		// PX4_INFO("DEBUG: serial port already open"); // TODO: reactivate
 		return PX4_OK;
 	}
 
@@ -245,7 +249,7 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 		return PX4_ERROR;
 	}
 
-	termios uart_config{};
+	termios uart_config = {};
 
 	// Store the current port configuration attributes
 	tcgetattr(_fd, &uart_config);
@@ -329,10 +333,24 @@ void RFbeamVLD1::Run()
 
 	// Collection phase
 	if (_collect_phase) {
-		if (OK != collect()) {
-			PX4_INFO("DEBUG: collection error");
-			// Restart the measurement state machine
-			start();
+		int ret = collect();
+
+		if (ret != PX4_OK) {
+			// Case 1/2: try again upon incomplete/failed read
+			if (collect() == -EAGAIN) {
+				PX4_INFO("DEBUG: trying read again");
+				// Reschedule to grab the missing bits, time to transmit 9 bytes @ 115200 bps // TODO: choose right interval
+				ScheduleClear();
+				ScheduleOnInterval(7_ms, 87 * 9);
+			}
+
+			// Case 2/2: data collection error (timeout)
+			else {
+				PX4_INFO("DEBUG: collection error");
+				// Restart the measurement state machine i.e. skip collection on next iteration
+				start();
+			}
+
 			return;
 		}
 
@@ -341,7 +359,7 @@ void RFbeamVLD1::Run()
 	}
 
 	// Measurement phase
-	if (OK != measure()) {
+	if (measure() != PX4_OK) {
 		PX4_INFO("DEBUG: measure error");
 	}
 
@@ -358,7 +376,7 @@ void RFbeamVLD1::start()
 	_collect_phase = false;
 
 	// Schedule a cycle to start things
-	ScheduleNow();
+	ScheduleDelayed(5); // 5 us
 }
 
 void RFbeamVLD1::stop()
