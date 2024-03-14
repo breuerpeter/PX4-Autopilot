@@ -341,17 +341,13 @@ void RFbeamVLD1::Run()
 
 	_print = false;
 
-	if (measure() != PX4_OK) {
-		PX4_INFO("DEBUG: measure error");
-	}
-
-	/* // Collection phase
+	// Collection phase
 	if (_collect_phase) {
 		int ret = collect();
 
 		if (ret != PX4_OK) {
 			// Case 1/2: try again upon incomplete/failed read
-			if (collect() == -EAGAIN) {
+			if (ret == -EAGAIN) {
 				PX4_INFO("DEBUG: trying read again");
 				// Reschedule to grab the missing bits, time to transmit 9 bytes @ 115200 bps // TODO: choose right interval
 				ScheduleClear();
@@ -378,7 +374,7 @@ void RFbeamVLD1::Run()
 	}
 
 	// Next phase is collection
-	_collect_phase = true; */
+	_collect_phase = true;
 
 	// Schedule a fresh cycle call when the measurement is done
 	ScheduleDelayed(_interval_us);
