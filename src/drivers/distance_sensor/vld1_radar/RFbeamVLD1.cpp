@@ -39,7 +39,7 @@ int RFbeamVLD1::init()
 	// Open serial port before writing to it
 	open_serial_port();
 
-	int bytes_written = ::write(_fd, _cmdINIT, INIT_PACKET_BYTES);
+	int bytes_written = ::write(_fd, _cmd_INIT_default, INIT_PACKET_BYTES);
 
 	if (bytes_written != INIT_PACKET_BYTES) {
 		perf_count(_comms_errors);
@@ -52,86 +52,97 @@ int RFbeamVLD1::init()
 	// Wait to give the sensor some time to process (50 ms)
 	px4_usleep(50000);
 
-	/* --------------------------- Target filter mode --------------------------- */
-
-	uint8_t *TGFI_msg = _cmdTGFI_STRONG;
-
 	// Update parameter values (only this one time)
 	ModuleParams::updateParams();
 
-	switch (_param_sensor_tgfi.get()) {
-	case 0: // provide strongest reading
-		TGFI_msg = _cmdTGFI_STRONG;
-		PX4_INFO("DEBUG: target filter mode: strongest");
+	/* --------------------------- Target filter mode --------------------------- */
+
+	uint8_t *TGFI_msg = _cmd_TGFI_strong;
+	bool TGFI_skip = false;
+	int32_t tgfi_setting = _param_sensor_tgfi.get();
+
+	switch (tgfi_setting) {
+
+	case RFBEAM_PARAM_TGFI_DEFAULT:
+		PX4_INFO("DEBUG: target filter setting: nearest (default)");
+		TGFI_skip = true;
 		break;
 
-	case 1: // provide nearest reading
-		TGFI_msg = _cmdTGFI_NEAR;
-		PX4_INFO("DEBUG: target filter mode: nearest");
+	case 0:
+		TGFI_msg = _cmd_TGFI_strong;
+		PX4_INFO("DEBUG: target filter setting: strongest");
 		break;
 
-	case 2: // provide farthest reading
+	/* case 1: // provide nearest reading
+		TGFI_msg = _cmd_TGFI_near;
+		PX4_INFO("DEBUG: target filter setting: nearest (default)");
+		break; */
+
+	case 2:
 		TGFI_msg = _cmdTGFI_FAR;
-		PX4_INFO("DEBUG: target filter mode: farthest");
+		PX4_INFO("DEBUG: target filter setting: farthest");
 		break;
 
 	default:
-		TGFI_msg = _cmdTGFI_STRONG;
-		PX4_INFO("DEBUG: target filter mode: default fallback (strongest)");
+		PX4_ERR("invalid target filter setting %" PRId32 ".", tgfi_setting);
+		return PX4_ERROR;
 	}
 
-	bytes_written = ::write(_fd, TGFI_msg, TGFI_PACKET_BYTES);
-	PX4_INFO("DEBUG: TGFI message size: %d", TGFI_PACKET_BYTES);
+	if (!TGFI_skip) {
+		bytes_written = ::write(_fd, TGFI_msg, TGFI_PACKET_BYTES);
 
-	if (bytes_written != TGFI_PACKET_BYTES) {
-		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: TGFI cmd write fail %d", bytes_written);
-		return bytes_written;
+		if (bytes_written != TGFI_PACKET_BYTES) {
+			perf_count(_comms_errors);
+			PX4_INFO("DEBUG: TGFI cmd write fail %d", bytes_written);
+			return bytes_written;
+		}
+
+		// TODO: check for response from sensor
+
+		// Wait to give the sensor some time to process (50 ms)
+		px4_usleep(50000);
 	}
-
-	// TODO: check for response from sensor
-
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
 
 	/* ------------------------------- Range mode ------------------------------- */
 
-	uint8_t *RRAI_msg = _cmdRRAI20;
+	uint8_t *RRAI_msg = _cmd_RRAI_20;
+	bool RRAI_skip = false;
+	int32_t range_setting = _param_sensor_range.get();
 
-	switch (_param_sensor_range.get()) {
-	case 0: // 20 m setting
-		RRAI_msg = _cmdRRAI20;
-		PX4_INFO("DEBUG: max range mode: 20 m");
-		_px4_rangefinder.set_min_distance(0.039f);
-		_px4_rangefinder.set_max_distance(20.14f);
+	switch (range_setting) {
+	case RFBEAM_PARAM_RNG_DEFAULT:
+		PX4_INFO("DEBUG: max range setting: 20 m (default)");
+		RRAI_skip = true;
+		_px4_rangefinder.set_min_distance(0.039f); // TODO: correct
+		_px4_rangefinder.set_max_distance(20.14f); // TODO: correct
 		break;
 
-	case 1: // 50 m setting
-		RRAI_msg = _cmdRRAI50;
-		PX4_INFO("DEBUG: max range mode: 50 m");
+	case 1:
+		RRAI_msg = _cmd_RRAI_50;
+		PX4_INFO("DEBUG: max range setting: 50 m");
 		_px4_rangefinder.set_min_distance(0.099f);
 		_px4_rangefinder.set_max_distance(50.91f);
 		break;
 
 	default:
-		RRAI_msg = _cmdRRAI20;
-		PX4_INFO("DEBUG: max range mode: default fallback (20 m)");
+		PX4_ERR("invalid range setting %" PRId32 ".", range_setting);
+		return PX4_ERROR;
 	}
 
-	bytes_written = ::write(_fd, RRAI_msg, RRAI_PACKET_BYTES);
-	PX4_INFO("DEBUG: RRAI message size: %d", RRAI_PACKET_BYTES);
+	if (!RRAI_skip) {
+		bytes_written = ::write(_fd, RRAI_msg, RRAI_PACKET_BYTES);
 
-	if (bytes_written != RRAI_PACKET_BYTES) {
-		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: RRAI cmd write fail %d", bytes_written);
-		return bytes_written;
+		if (bytes_written != RRAI_PACKET_BYTES) {
+			perf_count(_comms_errors);
+			PX4_INFO("DEBUG: RRAI cmd write fail %d", bytes_written);
+			return bytes_written;
+		}
+
+		// TODO: check for response from sensor
+
+		// Wait to give the sensor some time to process (50 ms)
+		px4_usleep(50000);
 	}
-
-
-	// TODO: check for response from sensor
-
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
 
 	/* --------------------------- Short range filter --------------------------- */
 
@@ -157,7 +168,7 @@ int RFbeamVLD1::measure()
 	// Flush the receive buffer
 	tcflush(_fd, TCIFLUSH);
 
-	int bytes_written = ::write(_fd, _cmdGNFD, GNFD_PACKET_BYTES);
+	int bytes_written = ::write(_fd, _cmd_GNFD_PDAT, GNFD_PACKET_BYTES);
 
 	if (bytes_written != GNFD_PACKET_BYTES) {
 		perf_count(_comms_errors);
@@ -216,7 +227,7 @@ int RFbeamVLD1::collect()
 			return -EAGAIN;
 		}
 
-	} else if (bytes_read == 0) {
+		} else if (bytes_read == 0) {
 		PX4_INFO("DEBUG: 0 bytes read");
 		return -EAGAIN; */
 	}
@@ -250,13 +261,13 @@ int RFbeamVLD1::collect()
 
 	PX4_INFO("DEBUG: distance buffer size: %d:", sizeof(float));
 
-	_read_buffer_distance[0] = _read_buffer[17+0];
+	_read_buffer_distance[0] = _read_buffer[17 + 0];
 	PX4_INFO("DEBUG: distance buffer element 1/4: %d:", _read_buffer_distance[0]);
-	_read_buffer_distance[1] = _read_buffer[17+1];
+	_read_buffer_distance[1] = _read_buffer[17 + 1];
 	PX4_INFO("DEBUG: distance buffer element 2/4: %d:", _read_buffer_distance[1]);
-	_read_buffer_distance[2] = _read_buffer[17+2];
+	_read_buffer_distance[2] = _read_buffer[17 + 2];
 	PX4_INFO("DEBUG: distance buffer element 3/4: %d:", _read_buffer_distance[2]);
-	_read_buffer_distance[3] = _read_buffer[17+3];
+	_read_buffer_distance[3] = _read_buffer[17 + 3];
 	PX4_INFO("DEBUG: distance buffer element 4/4: %d:", _read_buffer_distance[3]);
 
 	// float distance_m = *((float *)_read_buffer_distance);
@@ -333,6 +344,7 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 
 	// Even parity
 	uart_config.c_cflag &= ~PARODD;
+
 	uart_config.c_cflag |= PARENB;
 
 	// No flow control (clear flow control flag)

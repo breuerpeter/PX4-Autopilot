@@ -78,28 +78,30 @@ using namespace time_literals;
 #define PACKET_HEADER_BYTES                     4 // Number of bytes for  packet header
 #define PACKET_PAYLOAD_LENGTH_BYTES             4 // Number of bytes to specify payload length
 
+#define PACKET_PAYLOAD_START_IDX 		PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES
+
 // Driver -> radar (requests)
-#define INIT_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for INIT command
-#define GNFD_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for GNFD command
-#define GRPS_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 0                        // Payload length for GRPS command
-#define RFSE_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 0                        // Payload length for RFSE command
-#define GBYE_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 0                        // Payload length for GBYE command
-#define RRAI_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for RRAI command
-#define THOF_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for THOF command
-#define MIRA_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 2 * sizeof(uint16_t)     // Payload length for MIRA command
-#define MARA_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 2 * sizeof(uint16_t)     // Payload length for MARA command
-#define RAVG_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for RAVG command
-#define TGFI_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for TGFI command
-#define PREC_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for PREC command
-#define TXPW_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for TXPW command
-#define INTN_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for INTN command
-#define SRDF_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for SRDF command
-#define JBTL_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 0                        // Payload length for JBTL command
+#define INIT_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of INIT command
+#define GNFD_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of GNFD command
+#define GRPS_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 0	// Payload bytes of GRPS command
+#define RFSE_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 0	// Payload bytes of RFSE command
+#define GBYE_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 0	// Payload bytes of GBYE command
+#define RRAI_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of RRAI command
+#define THOF_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of THOF command
+#define MIRA_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 2	// Payload bytes of MIRA command
+#define MARA_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 2	// Payload bytes of MARA command
+#define RAVG_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of RAVG command
+#define TGFI_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of TGFI command
+#define PREC_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of PREC command
+#define TXPW_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of TXPW command
+#define INTN_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of INTN command
+#define SRDF_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of SRDF command
+#define JBTL_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 0	// Payload bytes of JBTL command
 
 // Radar -> driver (responses)
-#define RESP_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for RESP command
-#define RADC_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 2048 * sizeof(int16_t)   // Payload length for RADC command
-#define DONE_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 4 * sizeof(uint32_t)     // Payload length for DONE command
+#define RESP_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of RESP response
+#define RADC_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 2048	// Payload bytes of RADC response
+#define DONE_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 4	// Payload bytes of DONE response
 
 struct __attribute__((__packed__)) PDAT_msg {
 	float distance;
@@ -184,42 +186,108 @@ private:
 	// hrt_abstime _last_read_time = 0;
 	hrt_abstime _read_time = 0;
 
-	int _interval_us = 1.5 * RFBEAM_MEASURE_INTERVAL_MS * 1000; // TODO: factor 1.5 to give sensor extra time, might not be necessary
+	int _interval_us = 1.5 * RFBEAM_MEASURE_INTERVAL_MS *
+			   1000; // TODO: factor 1.5 to give sensor extra time, might not be necessary
 
 	bool _collect_phase = false;
 
 	perf_counter_t _comms_errors = perf_alloc(PC_COUNT, MODULE_NAME ": comm_err");
 	perf_counter_t _sample_perf = perf_alloc(PC_ELAPSED, MODULE_NAME ": read");
 
-	// std::array<uint8_t, NO_BYTES> _cmdINIT = {...}
-	// TODO: length of arrays not necessary
+	/* -------------------------------------------------------------------------- */
+	/*                    Message definitions (from datasheet)                    */
+	/* -------------------------------------------------------------------------- */
 
-	// {INIT, 1, 0} = 115200 bit/s
-	uint8_t _cmdINIT[INIT_PACKET_BYTES] = {0x49, 0x4E, 0x49, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00};
+	/* ---------------------------------- INIT ---------------------------------- */
 
-	// {GNFD, 1, 4}
-	uint8_t _cmdGNFD[GNFD_PACKET_BYTES] = {0x47, 0x4E, 0x46, 0x44, 0x01, 0x00, 0x00, 0x00, 0x04};
+	// Initialize with a baudrate of 115200 bit/s (default): {INIT, 1, 0}
+	uint8_t _cmd_INIT_default[INIT_PACKET_BYTES] = {0x49, 0x4E, 0x49, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00};
 
-	// {PREC, 1, 1} = high precision mode (default)
-	uint8_t _cmdHIGHPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x01};
-	// {PREC, 1, 0} = low precision mode
-	uint8_t _cmdLOWPREC[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00};
+	/* ---------------------------------- GNFD ---------------------------------- */
 
-	// {TGFI, 1, 0} = target filter: strongest first
-	uint8_t _cmdTGFI_STRONG[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
-	// {TGFI, 1, 0} = target filter: nearest first
-	uint8_t _cmdTGFI_NEAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
+	// Request distance to target: {GNFD, 1, 4}
+	uint8_t _cmd_GNFD_PDAT[GNFD_PACKET_BYTES] = {0x47, 0x4E, 0x46, 0x44, 0x01, 0x00, 0x00, 0x00, 0x04};
 
-	// {TGFI, 1, 2} = target filter: farthest first
+	/* ---------------------------------- TGFI ---------------------------------- */
+
+	// Target filter: strongest first: {TGFI, 1, 0}
+	uint8_t _cmd_TGFI_strong[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
+
+	// Target filter: nearest first (default): {TGFI, 1, 1}
+	uint8_t _cmd_TGFI_near[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01}; // (uint8_t)RFBEAM_PARAM_TGFI_DEFAULT
+
+	// Target filter: farthest first: {TGFI, 1, 2}
 	uint8_t _cmdTGFI_FAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x02};
 
-	// {RRAI, 1, 0} = max distance setting: 20 m
-	uint8_t _cmdRRAI20[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
-	// {RRAI, 1, 1} = max distance setting: 50 m
-	uint8_t _cmdRRAI50[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
+	uint8_t *_cmd_TGFI_default = _cmd_TGFI_near;
 
-	// {RFSE, 0} = restore factory settings
-	uint8_t _cmdRFSE[RFSE_PACKET_BYTES] = {0x52, 0x46, 0x53, 0x45, 0x00, 0x00, 0x00, 0x00};
+	/* ---------------------------------- RRAI ---------------------------------- */
+
+	// Max range setting: 20 m (default): {RRAI, 1, 0}
+	uint8_t _cmd_RRAI_20[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00}; // (uint8_t)RFBEAM_PARAM_RNG_DEFAULT
+
+	// Max range setting: 50 m: {RRAI, 1, 1}
+	uint8_t _cmd_RRAI_50[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
+
+	uint8_t *_cmd_RRAI_default = _cmd_RRAI_20;
+
+	/* ---------------------------------- SRDF ---------------------------------- */
+
+	// Short range filter off (default): {SRDF, 1, 0}
+	uint8_t _cmd_SRDF_off[SRDF_PACKET_BYTES] = {0x53, 0x52, 0x44, 0x46, 0x01, 0x00, 0x00, 0x00, 0x00}; // (uint8_t)RFBEAM_PARAM_SRNG_DEFAULT
+
+	// Short range filter on: {SRDF, 1, 1}
+	uint8_t _cmd_SRDF_on[SRDF_PACKET_BYTES] = {0x53, 0x52, 0x44, 0x46, 0x01, 0x00, 0x00, 0x00, 0x01};
+
+	uint8_t *_cmd_SRDF_default = _cmd_SRDF_off;
+
+	/* ---------------------------------- MIRA ---------------------------------- */
+
+	// Minimum range filter (default): {MIRA, 2, 5}
+	uint8_t _cmd_MIRA_default[MIRA_PACKET_BYTES] = {0x4D, 0x49, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0x05, 0x00}; // (uint16_t)RFBEAM_PARAM_MINF_DEFAULT
+
+	/* ---------------------------------- MARA ---------------------------------- */
+
+	// Maximum range filter (default): {MARA, 2, 460}
+	uint8_t _cmd_MARA_default[MARA_PACKET_BYTES] = {0x4D, 0x41, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0xCC, 0x01}; // (uint16_t)RFBEAM_PARAM_MAXF_DEFAULT // TODO: check
+
+	/* ---------------------------------- THOF ---------------------------------- */
+
+	// Threshold offset (default): {THOF, 1, 60}
+	uint8_t _cmd_THOF_default[THOF_PACKET_BYTES] = {0x54, 0x48, 0x4F, 0x46, 0x01, 0x00, 0x00, 0x00, 0x3C}; // (uint16_t)RFBEAM_PARAM_THRS_DEFAULT
+
+	/* ---------------------------------- INTN ---------------------------------- */
+
+	// Chirp integration count (default): {INTN, 1, 1}
+	uint8_t _cmd_INTN_default[INTN_PACKET_BYTES] = {0x49, 0x4E, 0x54, 0x4E, 0x01, 0x00, 0x00, 0x00, 0x01}; // (uint8_t)RFBEAM_PARAM_CHRP_DEFAULT
+
+	/* ---------------------------------- RAVG ---------------------------------- */
+
+	// Distance average count (default): {RAVG, 1, 5}
+	uint8_t _cmd_RAVG_default[RAVG_PACKET_BYTES] = {0x52, 0x41, 0x56, 0x47, 0x01, 0x00, 0x00, 0x00, 0x05}; // (uint8_t)RFBEAM_PARAM_AVG_DEFAULT
+
+	/* -------------------------------------------------------------------------- */
+	/*                         Unused message definitions                         */
+	/* -------------------------------------------------------------------------- */
+
+	/* ---------------------------------- PREC ---------------------------------- */
+
+	// High precision mode (default): {PREC, 1, 1}
+	uint8_t _cmd_PREC_high[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x01};
+
+	// Low precision mode: {PREC, 1, 0}
+	uint8_t _cmd_PREC_low[PREC_PACKET_BYTES] = {0x50, 0x52, 0x45, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00};
+
+	uint8_t *_cmd_PREC_default = _cmd_PREC_high;
+
+	/* ---------------------------------- RFSE ---------------------------------- */
+
+	// Restore factory settings: {RFSE, 0}
+	uint8_t _cmd_RFSE[RFSE_PACKET_BYTES] = {0x52, 0x46, 0x53, 0x45, 0x00, 0x00, 0x00, 0x00};
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 Parameters                                 */
+	/* -------------------------------------------------------------------------- */
 
 	uORB::Subscription _parameter_update_sub = ORB_ID(parameter_update);
 
