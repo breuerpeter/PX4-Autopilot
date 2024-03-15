@@ -25,20 +25,12 @@ using namespace time_literals;
 #define RFBEAM_STARTUP_TIME         15_ms
 
 // Settings
-#define RFBEAM_RANGE_SETTING_M      20  // 20 m or 50 m
 #define RFBEAM_HIGH_PRECISION_MODE  1   // on (1) or off (0); on by default for higher precision
 #define RFBEAM_CHIRP_INTEGRATION    1   // 1-100; higher value means slower rate but higher SNR
 #define RFBEAM_SHORT_RANGE_FILTER   1   // on (1) or off (0); choose on to enable short range measurements of strong reflectors
 
 // Values depending on settings
 // TODO: this is hardcoded here atm
-#if RFBEAM_RANGE_SETTING_M == 20
-#define RFBEAM_MIN_DISTANCE         0.039f
-#define RFBEAM_MAX_DISTANCE         20.14f
-#else
-#define RFBEAM_MIN_DISTANCE         0.099f
-#define RFBEAM_MAX_DISTANCE         50.91f
-#endif
 
 #if RFBEAM_HIGH_PRECISION_MODE == 1
 #define RFBEAM_FRAME_PROC_TIME      21_ms

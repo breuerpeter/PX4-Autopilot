@@ -24,9 +24,6 @@ RFbeamVLD1::RFbeamVLD1(const char *port, uint8_t rotation)
 	_px4_rangefinder.set_device_id(device_id.devid);
 	_px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_RFBEAM);
 	_px4_rangefinder.set_rangefinder_type(distance_sensor_s::MAV_DISTANCE_SENSOR_RADAR);
-
-	_px4_rangefinder.set_min_distance(RFBEAM_MIN_DISTANCE);
-	_px4_rangefinder.set_max_distance(RFBEAM_MAX_DISTANCE);
 }
 
 RFbeamVLD1::~RFbeamVLD1()
@@ -101,11 +98,15 @@ int RFbeamVLD1::init()
 	case 0: // 20 m setting
 		RRAI_msg = _cmdRRAI20;
 		PX4_INFO("DEBUG: max range mode: 20 m");
+		_px4_rangefinder.set_min_distance(0.039f);
+		_px4_rangefinder.set_max_distance(20.14f);
 		break;
 
 	case 1: // 50 m setting
 		RRAI_msg = _cmdRRAI50;
 		PX4_INFO("DEBUG: max range mode: 50 m");
+		_px4_rangefinder.set_min_distance(0.099f);
+		_px4_rangefinder.set_max_distance(50.91f);
 		break;
 
 	default:
@@ -177,9 +178,13 @@ int RFbeamVLD1::collect()
 	_read_time = hrt_absolute_time(); // TODO: e.g. LeddarOne driver sets timestamp in measure()
 
 	const int buffer_size = sizeof(_read_buffer);
+	PX4_INFO("DEBUG: buffer_size: %d:", buffer_size);
 	const int message_size = sizeof(reading_msg);
+	PX4_INFO("DEBUG: message_size: %d:", message_size);
 
 	int bytes_read = ::read(_fd, _read_buffer + _read_buffer_len, buffer_size - _read_buffer_len);
+
+	PX4_INFO("DEBUG: bytes_read: %d:", bytes_read);
 
 	if (bytes_read < 0) {
 		perf_count(_comms_errors);
@@ -210,13 +215,17 @@ int RFbeamVLD1::collect()
 
 	_last_read_time = hrt_absolute_time();
 
-	// reading_msg *msg = nullptr;
-	// msg = (reading_msg *)_read_buffer;
+	float distance_m = 5.0f;
 
-	// float distance_m = msg->distance;
+	reading_msg *msg = nullptr;
+	msg = (reading_msg *)_read_buffer;
+
+	distance_m = msg->distance;
+
+	PX4_INFO("DEBUG: distance_m: %f:", (double)distance_m);
 
 	// Send via uORB
-	_px4_rangefinder.update(_read_time, 2.0f); // TODO: distance_m, may need LSB conversion?
+	_px4_rangefinder.update(_read_time, distance_m); // TODO: distance_m, may need LSB conversion?
 
 	perf_end(_sample_perf);
 
