@@ -21,16 +21,21 @@
 
 using namespace time_literals;
 
-// Datasheet values independent of settings
+/* -------------------------------------------------------------------------- */
+/*                                   Defines                                  */
+/* -------------------------------------------------------------------------- */
+
+/* ---------------------------------- Basic --------------------------------- */
 #define RFBEAM_STARTUP_TIME         15_ms
 
-// Settings
-#define RFBEAM_HIGH_PRECISION_MODE  1   // on (1) or off (0); on by default for higher precision
 #define RFBEAM_CHIRP_INTEGRATION    1   // 1-100; higher value means slower rate but higher SNR
 #define RFBEAM_SHORT_RANGE_FILTER   1   // on (1) or off (0); choose on to enable short range measurements of strong reflectors
 
-// Values depending on settings
-// TODO: this is hardcoded here atm
+
+/* ----------------------------- Precision mode ----------------------------- */
+
+// TODO: add PX4 parameter to switch between high and low precision mode
+#define RFBEAM_HIGH_PRECISION_MODE  1
 
 #if RFBEAM_HIGH_PRECISION_MODE == 1
 #define RFBEAM_FRAME_PROC_TIME      21_ms
@@ -43,6 +48,8 @@ using namespace time_literals;
 #define RF_BEAM_RESOLUTION          0.09943f // in meters
 #endif
 #endif
+
+
 
 #if RFBEAM_SHORT_RANGE_FILTER == 1
 #define RFBEAM_MEASURE_INTERVAL_MS     RFBEAM_FRAME_PROC_TIME + (RFBEAM_CHIRP_INTEGRATION - 1) * (3_ms + 5_ms)
@@ -80,11 +87,11 @@ using namespace time_literals;
 #define JBTL_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 0                        // Payload length for JBTL command
 
 // Messages
-#define RESP_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 2048 * sizeof(uint8_t)   // Payload length for RESP command
+#define RESP_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for RESP command
 #define RADC_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 2048 * sizeof(int16_t)   // Payload length for RADC command
 #define DONE_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 4 * sizeof(uint32_t)     // Payload length for DONE command
 
-struct __attribute__((__packed__)) reading_msg {
+struct __attribute__((__packed__)) PDAT_msg {
 	float distance;
 	uint16_t mag;
 };
@@ -144,13 +151,13 @@ private:
 	void Run() override;
 
 	/**
-	 * @brief Initialise the automatic measurement state machine and start it.
+	 * @brief Initialise the automatic measurement state machine and start it
 	 *
 	 */
 	void start();
 
 	/**
-	 * @brief Stop the automatic measurement state machine.
+	 * @brief Stop the automatic measurement state machine
 	 *
 	 */
 	void stop();
@@ -163,13 +170,13 @@ private:
 
 	bool _print = true;
 
-	uint8_t _read_buffer[sizeof(reading_msg)] = {};
-	uint8_t _read_buffer_len = 0;
+	uint8_t _read_buffer[50] = {}; // TODO: don't hardcode size
+	// uint8_t _read_buffer_len = 0;
 
-	hrt_abstime _last_read_time = 0;
+	// hrt_abstime _last_read_time = 0;
 	hrt_abstime _read_time = 0;
 
-	int _interval_us = 1.5 * RFBEAM_MEASURE_INTERVAL_MS * 1000; // factor 1.5 to give sensor extra time
+	int _interval_us = 1.5 * RFBEAM_MEASURE_INTERVAL_MS * 1000; // TODO: factor 1.5 to give sensor extra time, might not be necessary
 
 	bool _collect_phase = false;
 

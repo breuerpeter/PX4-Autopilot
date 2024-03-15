@@ -52,6 +52,8 @@ int RFbeamVLD1::init()
 	// Wait to give the sensor some time to process (50 ms)
 	px4_usleep(50000);
 
+	/* --------------------------- Target filter mode --------------------------- */
+
 	uint8_t *TGFI_msg = _cmdTGFI_STRONG;
 
 	// Update parameter values (only this one time)
@@ -91,6 +93,8 @@ int RFbeamVLD1::init()
 
 	// Wait to give the sensor some time to process (50 ms)
 	px4_usleep(50000);
+
+	/* ------------------------------- Range mode ------------------------------- */
 
 	uint8_t *RRAI_msg = _cmdRRAI20;
 
@@ -145,7 +149,7 @@ int RFbeamVLD1::init()
 int RFbeamVLD1::measure()
 {
 	// Flush the receive buffer
-	// tcflush(_fd, TCIFLUSH);
+	tcflush(_fd, TCIFLUSH);
 
 	int bytes_written = ::write(_fd, _cmdGNFD, GNFD_PACKET_BYTES);
 
@@ -155,7 +159,7 @@ int RFbeamVLD1::measure()
 		return bytes_written;
 	}
 
-	_read_buffer_len = 0;
+	// _read_buffer_len = 0;
 	return PX4_OK;
 }
 
@@ -173,16 +177,20 @@ int RFbeamVLD1::collect()
 		return PX4_ERROR;
 	}
 
-	int64_t read_elapsed = hrt_elapsed_time(&_last_read_time);
+	PX4_INFO("DEBUG: bytes_available: %d:", bytes_available);
+
+	// int64_t read_elapsed = hrt_elapsed_time(&_last_read_time);
 
 	_read_time = hrt_absolute_time(); // TODO: e.g. LeddarOne driver sets timestamp in measure()
 
 	const int buffer_size = sizeof(_read_buffer);
 	PX4_INFO("DEBUG: buffer_size: %d:", buffer_size);
-	const int message_size = sizeof(reading_msg);
-	PX4_INFO("DEBUG: message_size: %d:", message_size);
 
-	int bytes_read = ::read(_fd, _read_buffer + _read_buffer_len, buffer_size - _read_buffer_len);
+	/* const int message_size = sizeof(PDAT_msg);
+	PX4_INFO("DEBUG: message_size: %d:", message_size); */
+
+	// int bytes_read = ::read(_fd, _read_buffer + _read_buffer_len, buffer_size - _read_buffer_len);
+	int bytes_read = ::read(_fd, _read_buffer, buffer_size);
 
 	PX4_INFO("DEBUG: bytes_read: %d:", bytes_read);
 
@@ -190,7 +198,9 @@ int RFbeamVLD1::collect()
 		perf_count(_comms_errors);
 		perf_end(_sample_perf);
 
-		// Only throw error on timeout
+		return PX4_ERROR;
+
+		/* // Only throw error on timeout
 		if (read_elapsed > (_interval_us * 2)) {
 			PX4_INFO("DEBUG: timeout on read");
 			return bytes_read;
@@ -202,10 +212,10 @@ int RFbeamVLD1::collect()
 
 	} else if (bytes_read == 0) {
 		PX4_INFO("DEBUG: 0 bytes read");
-		return -EAGAIN;
+		return -EAGAIN; */
 	}
 
-	_read_buffer_len += bytes_read;
+	/* _read_buffer_len += bytes_read;
 
 	if (_read_buffer_len < message_size) {
 		PX4_INFO("DEBUG: incomplete read");
@@ -217,12 +227,38 @@ int RFbeamVLD1::collect()
 
 	float distance_m = 5.0f;
 
-	reading_msg *msg = nullptr;
-	msg = (reading_msg *)_read_buffer;
+	PDAT_msg *msg = nullptr;
+	msg = (PDAT_msg *)_read_buffer;
 
 	distance_m = msg->distance;
 
-	PX4_INFO("DEBUG: distance_m: %f:", (double)distance_m);
+	PX4_INFO("DEBUG: distance_m: %f:", (double)distance_m); */
+
+	else if (bytes_read != 23) {
+		PX4_INFO("DEBUG: no target detected, bytes read: %d", bytes_read);
+		perf_end(_sample_perf);
+		return PX4_ERROR;
+	}
+
+	uint8_t _read_buffer_distance[sizeof(float)] = {}; // should be 4 bytes according to sensor datasheet
+
+	PX4_INFO("DEBUG: distance buffer size: %d:", sizeof(float));
+
+	_read_buffer_distance[0] = _read_buffer[17+0];
+	PX4_INFO("DEBUG: distance buffer element 1/4: %d:", _read_buffer_distance[0]);
+	_read_buffer_distance[1] = _read_buffer[17+1];
+	PX4_INFO("DEBUG: distance buffer element 2/4: %d:", _read_buffer_distance[1]);
+	_read_buffer_distance[2] = _read_buffer[17+2];
+	PX4_INFO("DEBUG: distance buffer element 3/4: %d:", _read_buffer_distance[2]);
+	_read_buffer_distance[3] = _read_buffer[17+3];
+	PX4_INFO("DEBUG: distance buffer element 4/4: %d:", _read_buffer_distance[3]);
+
+	// float distance_m = *((float *)_read_buffer_distance);
+
+	float distance_m;
+	memcpy(&distance_m, _read_buffer_distance, sizeof(distance_m));
+
+	PX4_INFO("DEBUG: distance: %f:", (double)distance_m);
 
 	// Send via uORB
 	_px4_rangefinder.update(_read_time, distance_m); // TODO: distance_m, may need LSB conversion?
