@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 /**
- * Enable RFbeam V-LD1 radar distance sensor (UART)
+ * Enable the RFbeam V-LD1 radar distance sensor (UART)
  *
  * @reboot_required true
  *
@@ -42,25 +42,25 @@
 PARAM_DEFINE_INT32(SENS_EN_VLD1, 0);
 
 /**
- * Configure target filter of RFbeam V-LD1 radar distance sensor
+ * Configure the target filter of the RFbeam V-LD1 radar distance sensor
  *
- * This parameter configures the reading (strongest, nearest or farthest) to use
+ * This parameter configures which detected target's distance should be used.
  *
  * @reboot_required true
  * @min 0
  * @max 2
  * @group Sensors
  *
- * @value 0 Strongest reading
- * @value 1 Nearest reading
- * @value 2 Farthest reading
+ * @value 0 Strongest target
+ * @value 1 Nearest target
+ * @value 2 Farthest target
  */
-PARAM_DEFINE_INT32(SENS_VLD1_MODE, 0);
+PARAM_DEFINE_INT32(SENS_VLD1_TGFI, 1);
 
 /**
- * Set maximum range of RFbeam V-LD1 radar distance sensor
+ * Set the maximum range of the RFbeam V-LD1 radar distance sensor
  *
- * This parameter sets the maximum range in meters
+ * This parameter sets the range mode in meters.
  *
  * @reboot_required true
  * @min 0
@@ -71,3 +71,75 @@ PARAM_DEFINE_INT32(SENS_VLD1_MODE, 0);
  * @value 1 50 m
  */
 PARAM_DEFINE_INT32(SENS_VLD1_RNG, 0);
+
+/**
+ * Enable the short range filter of the RFbeam V-LD1 radar distance sensor
+ *
+ * This parameter enables/disables the short range filter.
+ *
+ * @reboot_required true
+ *
+ * @boolean
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(SENS_VLD1_SRNG, 0);
+
+/**
+ * Configure the minimum range filter of the RFbeam V-LD1 radar distance sensor
+ *
+ * This parameter sets the FFT frequency bin above which targets are detected.
+ *
+ * @reboot_required true
+ * @min 1
+ * @max 510
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(SENS_VLD1_MINF, 5);
+
+/**
+ * Configure the maximum range filter of the RFbeam V-LD1 radar distance sensor
+ *
+ * This parameter sets the FFT frequency bin below which targets are detected.
+ *
+ * @reboot_required true
+ * @min 2
+ * @max 511
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(SENS_VLD1_MAXF, 460);
+
+/**
+ * Configure the threshold offset of the RFbeam V-LD1 radar distance sensor
+ *
+ * This parameter sets the level (in dB) above which targets are detected.
+ *
+ * @reboot_required true
+ * @min 20
+ * @max 90
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(SENS_VLD1_THRS, 60);
+
+/**
+ * Configure the chirp integration of the RFbeam V-LD1 radar distance sensor
+ *
+ * This parameter sets the number of FMCW sweeps to integrate per measurement.
+ *
+ * @reboot_required true
+ * @min 1
+ * @max 100
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(SENS_VLD1_CHRP, 1);
+
+/**
+ * Configure the averaging of the RFbeam V-LD1 radar distance sensor
+ *
+ * This parameter sets the number of measurements to average before outputting.
+ *
+ * @reboot_required true
+ * @min 1
+ * @max 255
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(SENS_VLD1_AVG, 5);

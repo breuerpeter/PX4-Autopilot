@@ -49,7 +49,16 @@ using namespace time_literals;
 #endif
 #endif
 
+/* ---------------------------- Default settings ---------------------------- */
 
+#define RFBEAM_PARAM_TGFI_DEFAULT 	1
+#define RFBEAM_PARAM_RNG_DEFAULT 	0
+#define RFBEAM_PARAM_SRNG_DEFAULT 	0
+#define RFBEAM_PARAM_MINF_DEFAULT 	5
+#define RFBEAM_PARAM_MAXF_DEFAULT 	460
+#define RFBEAM_PARAM_THRS_DEFAULT 	60
+#define RFBEAM_PARAM_CHRP_DEFAULT 	1
+#define RFBEAM_PARAM_AVG_DEFAULT 	5
 
 #if RFBEAM_SHORT_RANGE_FILTER == 1
 #define RFBEAM_MEASURE_INTERVAL_MS     RFBEAM_FRAME_PROC_TIME + (RFBEAM_CHIRP_INTEGRATION - 1) * (3_ms + 5_ms)
@@ -64,11 +73,12 @@ using namespace time_literals;
  */
 #define SENS_VARIANCE               RF_BEAM_RESOLUTION * RF_BEAM_RESOLUTION
 
-// Packet format
-#define PACKET_HEADER_BYTES                     4 // Number of bytes to specify packet header
+/* --------------------------------- Packets -------------------------------- */
+
+#define PACKET_HEADER_BYTES                     4 // Number of bytes for  packet header
 #define PACKET_PAYLOAD_LENGTH_BYTES             4 // Number of bytes to specify payload length
 
-// Commands
+// Driver -> radar (requests)
 #define INIT_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for INIT command
 #define GNFD_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for GNFD command
 #define GRPS_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 0                        // Payload length for GRPS command
@@ -86,7 +96,7 @@ using namespace time_literals;
 #define SRDF_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for SRDF command
 #define JBTL_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 0                        // Payload length for JBTL command
 
-// Messages
+// Radar -> driver (responses)
 #define RESP_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 1 * sizeof(uint8_t)      // Payload length for RESP command
 #define RADC_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 2048 * sizeof(int16_t)   // Payload length for RADC command
 #define DONE_PACKET_BYTES       PACKET_HEADER_BYTES + PACKET_PAYLOAD_LENGTH_BYTES + 4 * sizeof(uint32_t)     // Payload length for DONE command
@@ -168,8 +178,6 @@ private:
 
 	int _fd = -1;
 
-	bool _print = true;
-
 	uint8_t _read_buffer[50] = {}; // TODO: don't hardcode size
 	// uint8_t _read_buffer_len = 0;
 
@@ -217,7 +225,13 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::SENS_EN_VLD1>)    _param_sensor_enabled,
-		(ParamInt<px4::params::SENS_VLD1_MODE>)  _param_sensor_mode,
-		(ParamInt<px4::params::SENS_VLD1_RNG>)  _param_sensor_range
+		(ParamInt<px4::params::SENS_VLD1_TGFI>)  _param_sensor_tgfi,
+		(ParamInt<px4::params::SENS_VLD1_RNG>)  _param_sensor_range,
+		(ParamInt<px4::params::SENS_VLD1_SRNG>)  _param_sensor_srng,
+		(ParamInt<px4::params::SENS_VLD1_MINF>)  _param_sensor_minf,
+		(ParamInt<px4::params::SENS_VLD1_MAXF>)  _param_sensor_maxf,
+		(ParamInt<px4::params::SENS_VLD1_THRS>)  _param_sensor_thrs,
+		(ParamInt<px4::params::SENS_VLD1_CHRP>)  _param_sensor_chrp,
+		(ParamInt<px4::params::SENS_VLD1_AVG>)  _param_sensor_avg
 	);
 };

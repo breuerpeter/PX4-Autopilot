@@ -59,7 +59,7 @@ int RFbeamVLD1::init()
 	// Update parameter values (only this one time)
 	ModuleParams::updateParams();
 
-	switch (_param_sensor_mode.get()) {
+	switch (_param_sensor_tgfi.get()) {
 	case 0: // provide strongest reading
 		TGFI_msg = _cmdTGFI_STRONG;
 		PX4_INFO("DEBUG: target filter mode: strongest");
@@ -127,23 +127,29 @@ int RFbeamVLD1::init()
 		return bytes_written;
 	}
 
-	PX4_INFO("DEBUG: init: before close, fd: %d", _fd);
-	_print = true;
+
+	// TODO: check for response from sensor
+
+	// Wait to give the sensor some time to process (50 ms)
+	px4_usleep(50000);
+
+	/* --------------------------- Short range filter --------------------------- */
+
+	/* -------------------------- Minimum range filter -------------------------- */
+
+	/* -------------------------- Maximum range filter -------------------------- */
+
+	/* ---------------------------- Threshold offset ---------------------------- */
+
+	/* ---------------------------- Chirp integration --------------------------- */
 
 	// Close the fd
 	::close(_fd);
 	_fd = -1;
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
-
 	start();
 
-	// TODO: check for response from sensor
-
 	return PX4_OK;
-
-	// TODO: e.g. LeddarOne driver has more thorough init routine
 }
 
 int RFbeamVLD1::measure()
@@ -373,18 +379,8 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 
 void RFbeamVLD1::Run()
 {
-	if(_print) {
-		PX4_INFO("DEBUG: Run: before openserialport, fd: %d", _fd);
-	}
-
 	// Ensure the serial port is open
 	open_serial_port();
-
-	if(_print) {
-		PX4_INFO("DEBUG: Run: after openserialport, fd: %d", _fd);
-	}
-
-	_print = false;
 
 	// Collection phase
 	if (_collect_phase) {
