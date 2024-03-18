@@ -25,15 +25,14 @@ using namespace time_literals;
 /*                                   Defines                                  */
 /* -------------------------------------------------------------------------- */
 
+// TODO:
+#define RFBEAM_CHIRP_INTEGRATION	1
+
 /* ---------------------------------- Basic --------------------------------- */
 #define RFBEAM_STARTUP_TIME		15_ms
-#define RFBEAM_INTERNAL_OFFSET_MM	21.0f
-#define RFBEAM_RANGE_RESOLUTION_20M_MM	39.0f
-#define RFBEAM_RANGE_RESOLUTION_50M_MM	99.0f
-
-#define RFBEAM_CHIRP_INTEGRATION    1   // 1-100; higher value means slower rate but higher SNR
-#define RFBEAM_SHORT_RANGE_FILTER   1   // on (1) or off (0); choose on to enable short range measurements of strong reflectors
-
+#define RFBEAM_INTERNAL_OFFSET_CM	-2.1f
+#define RFBEAM_RANGE_RESOLUTION_20M_CM	3.934f
+#define RFBEAM_RANGE_RESOLUTION_50M_CM	9.943f
 
 /* ----------------------------- Precision mode ----------------------------- */
 
@@ -205,6 +204,20 @@ private:
 	 */
 	void stop();
 
+	/**
+	 * @brief Send a GRPS command to the sensor via UART (for debugging).
+	 *
+	 * @return int
+	 */
+	int request_sensor_settings();
+
+	/**
+	 * @brief Send a RFSE command to the sensor via UART.
+	 *
+	 * @return int
+	 */
+	int restore_factory_settings();
+
 	PX4Rangefinder _px4_rangefinder;
 
 	char _port[20] = {};
@@ -222,7 +235,7 @@ private:
 
 	bool _collect_phase = false;
 
-	float _range_resolution_mm = 0;
+	float _range_resolution_cm = 0;
 
 	perf_counter_t _comms_errors = perf_alloc(PC_COUNT, MODULE_NAME ": comm_err");
 	perf_counter_t _sample_perf = perf_alloc(PC_ELAPSED, MODULE_NAME ": read");
@@ -277,30 +290,31 @@ private:
 	/* ---------------------------------- MIRA ---------------------------------- */
 
 	// Minimum range filter (default): {MIRA, 2, 5}
-	uint8_t _cmd_MIRA_default[MIRA_PACKET_BYTES] = {0x4D, 0x49, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0x05, 0x00}; // (uint16_t)RFBEAM_PARAM_MINF_DEFAULT
+	uint8_t _cmd_MIRA_default[MIRA_PACKET_BYTES] = {0x4D, 0x49, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0x05, 0x00}; // TODO: use (uint16_t)RFBEAM_PARAM_MINF_DEFAULT
 
 	/* ---------------------------------- MARA ---------------------------------- */
 
 	// Maximum range filter (default): {MARA, 2, 460}
-	uint8_t _cmd_MARA_default[MARA_PACKET_BYTES] = {0x4D, 0x41, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0xCC, 0x01}; // (uint16_t)RFBEAM_PARAM_MAXF_DEFAULT // TODO: check
+	uint8_t _cmd_MARA_default[MARA_PACKET_BYTES] = {0x4D, 0x41, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0xCC, 0x01}; // TODO: use (uint16_t)RFBEAM_PARAM_MAXF_DEFAULT // TODO: check
 
 	/* ---------------------------------- THOF ---------------------------------- */
 
-	// Threshold offset (default): {THOF, 1, 60}
-	uint8_t _cmd_THOF_default[THOF_PACKET_BYTES] = {0x54, 0x48, 0x4F, 0x46, 0x01, 0x00, 0x00, 0x00, 0x3C}; // (uint8_t)RFBEAM_PARAM_THRS_DEFAULT
+	// Threshold offset (default): {THOF, 1, 60 i.e. 0x3C}
+	uint8_t _cmd_THOF_default[THOF_PACKET_BYTES] = {0x54, 0x48, 0x4F, 0x46, 0x01, 0x00, 0x00, 0x00, 0x28}; // TODO: use (uint8_t)RFBEAM_PARAM_THRS_DEFAULT
 
 	/* ---------------------------------- INTN ---------------------------------- */
 
 	// Chirp integration count (default): {INTN, 1, 1}
-	uint8_t _cmd_INTN_default[INTN_PACKET_BYTES] = {0x49, 0x4E, 0x54, 0x4E, 0x01, 0x00, 0x00, 0x00, 0x01}; // (uint8_t)RFBEAM_PARAM_CHRP_DEFAULT
+	uint8_t _cmd_INTN_default[INTN_PACKET_BYTES] = {0x49, 0x4E, 0x54, 0x4E, 0x01, 0x00, 0x00, 0x00, 0x01}; // TODO: use (uint8_t)RFBEAM_PARAM_CHRP_DEFAULT
 
 	/* ---------------------------------- RAVG ---------------------------------- */
 
 	// Distance average count (default): {RAVG, 1, 5}
-	uint8_t _cmd_RAVG_default[RAVG_PACKET_BYTES] = {0x52, 0x41, 0x56, 0x47, 0x01, 0x00, 0x00, 0x00, 0x05}; // (uint8_t)RFBEAM_PARAM_AVG_DEFAULT
+	uint8_t _cmd_RAVG_default[RAVG_PACKET_BYTES] = {0x52, 0x41, 0x56, 0x47, 0x01, 0x00, 0x00, 0x00, 0x05}; // TODO: use (uint8_t)RFBEAM_PARAM_AVG_DEFAULT
+
 
 	/* -------------------------------------------------------------------------- */
-	/*                         Unused message definitions                         */
+	/*                          Other message definitions                         */
 	/* -------------------------------------------------------------------------- */
 
 	/* ---------------------------------- PREC ---------------------------------- */
@@ -317,6 +331,11 @@ private:
 
 	// Restore factory settings: {RFSE, 0}
 	uint8_t _cmd_RFSE[RFSE_PACKET_BYTES] = {0x52, 0x46, 0x53, 0x45, 0x00, 0x00, 0x00, 0x00};
+
+	/* ---------------------------------- GRPS ---------------------------------- */
+
+	// Request parameter settings: {GRPS, 0}
+	uint8_t _cmd_GRPS[GRPS_PACKET_BYTES] = {0x47, 0x52, 0x50, 0x53, 0x00, 0x00, 0x00, 0x00};
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 Parameters                                 */
