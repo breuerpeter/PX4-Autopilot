@@ -57,7 +57,7 @@ int RFbeamVLD1::init()
 
 	/* --------------------------- Target filter mode --------------------------- */
 
-	uint8_t *TGFI_msg = _cmd_TGFI_strong;
+	uint8_t *TGFI_msg = _cmd_TGFI_default;
 	bool TGFI_skip = false;
 	int32_t tgfi_setting = _param_sensor_tgfi.get();
 
@@ -65,7 +65,7 @@ int RFbeamVLD1::init()
 
 	case RFBEAM_PARAM_TGFI_DEFAULT:
 		PX4_INFO("DEBUG: target filter setting: nearest (default)");
-		TGFI_skip = true;
+		TGFI_skip = true; // no need to send message
 		break;
 
 	case 0:
@@ -84,7 +84,7 @@ int RFbeamVLD1::init()
 		break;
 
 	default:
-		PX4_ERR("invalid target filter setting %" PRId32 ".", tgfi_setting);
+		PX4_ERR("invalid target filter setting: %" PRId32, tgfi_setting);
 		return PX4_ERROR;
 	}
 
@@ -105,27 +105,29 @@ int RFbeamVLD1::init()
 
 	/* ------------------------------- Range mode ------------------------------- */
 
-	uint8_t *RRAI_msg = _cmd_RRAI_20;
+	uint8_t *RRAI_msg = _cmd_RRAI_default;
 	bool RRAI_skip = false;
 	int32_t range_setting = _param_sensor_range.get();
 
 	switch (range_setting) {
 	case RFBEAM_PARAM_RNG_DEFAULT:
 		PX4_INFO("DEBUG: max range setting: 20 m (default)");
-		RRAI_skip = true;
-		_px4_rangefinder.set_min_distance(0.039f); // TODO: correct
-		_px4_rangefinder.set_max_distance(20.14f); // TODO: correct
+		RRAI_skip = true; // no need to send message
+		_range_resolution_mm = RFBEAM_RANGE_RESOLUTION_20M_MM;
+		// _px4_rangefinder.set_min_distance(0.039f); // TODO: correct
+		// _px4_rangefinder.set_max_distance(20.14f); // TODO: correct
 		break;
 
 	case 1:
 		RRAI_msg = _cmd_RRAI_50;
 		PX4_INFO("DEBUG: max range setting: 50 m");
-		_px4_rangefinder.set_min_distance(0.099f);
-		_px4_rangefinder.set_max_distance(50.91f);
+		_range_resolution_mm = RFBEAM_RANGE_RESOLUTION_50M_MM;
+		// _px4_rangefinder.set_min_distance(0.099f);
+		// _px4_rangefinder.set_max_distance(50.91f);
 		break;
 
 	default:
-		PX4_ERR("invalid range setting %" PRId32 ".", range_setting);
+		PX4_ERR("invalid range setting: %" PRId32, range_setting);
 		return PX4_ERROR;
 	}
 
@@ -146,13 +148,246 @@ int RFbeamVLD1::init()
 
 	/* --------------------------- Short range filter --------------------------- */
 
+	uint8_t *SRDF_msg = _cmd_SRDF_default;
+	bool SRDF_skip = false;
+	int32_t short_range_filter_enabled = _param_sensor_srng.get();
+
+	switch (short_range_filter_enabled) {
+	case RFBEAM_PARAM_SRNG_DEFAULT:
+		PX4_INFO("DEBUG: short range filter: off (default)");
+		SRDF_skip = true; // no need to send message
+		break;
+
+	case 1:
+		SRDF_msg = _cmd_SRDF_on;
+		PX4_INFO("DEBUG: short range filter: on");
+		break;
+
+	default:
+		PX4_ERR("invalid short range filter setting: %" PRId32, short_range_filter_enabled);
+		return PX4_ERROR;
+	}
+
+	if (!SRDF_skip) {
+		bytes_written = ::write(_fd, SRDF_msg, SRDF_PACKET_BYTES);
+
+		if (bytes_written != SRDF_PACKET_BYTES) {
+			perf_count(_comms_errors);
+			PX4_INFO("DEBUG: SRDF cmd write fail %d", bytes_written);
+			return bytes_written;
+		}
+
+		// TODO: check for response from sensor
+
+		// Wait to give the sensor some time to process (50 ms)
+		px4_usleep(50000);
+	}
+
 	/* -------------------------- Minimum range filter -------------------------- */
+
+	uint8_t *MIRA_msg = _cmd_MIRA_default;
+	bool MIRA_skip = false;
+	int32_t min_range_setting = _param_sensor_minf.get();
+
+	switch (min_range_setting) {
+	case RFBEAM_PARAM_MINF_DEFAULT:
+		PX4_INFO("DEBUG: min range filter: bin %" PRId32 " (default)", (uint32_t)RFBEAM_PARAM_MINF_DEFAULT);
+		MIRA_skip = true; // no need to send message
+		break;
+
+	default:
+		if (min_range_setting >= RFBEAM_PARAM_MINF_MIN && min_range_setting <= RFBEAM_PARAM_MINF_MAX) {
+			uint16_t min_range = (uint16_t)min_range_setting;
+			// Fill payload section (LSB first) of MIRA packet
+			MIRA_msg[PACKET_PAYLOAD_START_IDX] = (uint8_t)(min_range & 0xFF); // mask away the higher byte
+			MIRA_msg[PACKET_PAYLOAD_START_IDX + 1] = (uint8_t)(min_range >> 8); //
+			PX4_INFO("DEBUG: min range filter: bin %" PRId32, min_range_setting);
+			break;
+
+		} else {
+			PX4_ERR("invalid min range filter setting: %" PRId32, min_range_setting);
+			return PX4_ERROR;
+		}
+	}
+
+	if (!MIRA_skip) {
+		bytes_written = ::write(_fd, MIRA_msg, MIRA_PACKET_BYTES);
+
+		if (bytes_written != MIRA_PACKET_BYTES) {
+			perf_count(_comms_errors);
+			PX4_INFO("DEBUG: MIRA cmd write fail %d", bytes_written);
+			return bytes_written;
+		}
+
+		// TODO: check for response from sensor
+
+		// Wait to give the sensor some time to process (50 ms)
+		px4_usleep(50000);
+	}
 
 	/* -------------------------- Maximum range filter -------------------------- */
 
+	uint8_t *MARA_msg = _cmd_MARA_default;
+	bool MARA_skip = false;
+	int32_t max_range_setting = _param_sensor_maxf.get();
+
+	switch (max_range_setting) {
+	case RFBEAM_PARAM_MAXF_DEFAULT:
+		PX4_INFO("DEBUG: max range filter: bin %" PRId32 " (default)", (uint32_t)RFBEAM_PARAM_MAXF_DEFAULT);
+		MARA_skip = true; // no need to send message
+		break;
+
+	default:
+		if (max_range_setting >= RFBEAM_PARAM_MAXF_MIN && max_range_setting <= RFBEAM_PARAM_MAXF_MAX) {
+			uint16_t max_range = (uint16_t)max_range_setting;
+			// Fill payload section (LSB first) of MARA packet
+			MARA_msg[PACKET_PAYLOAD_START_IDX] = (uint8_t)(max_range & 0xFF); // mask away the higher byte
+			MARA_msg[PACKET_PAYLOAD_START_IDX + 1] = (uint8_t)(max_range >> 8); //
+			PX4_INFO("DEBUG: max range filter: bin %" PRId32, max_range_setting);
+			break;
+
+		} else {
+			PX4_ERR("invalid max range filter setting: %" PRId32 ".", max_range_setting);
+			return PX4_ERROR;
+		}
+	}
+
+	if (!MARA_skip) {
+		bytes_written = ::write(_fd, MARA_msg, MARA_PACKET_BYTES);
+
+		if (bytes_written != MARA_PACKET_BYTES) {
+			perf_count(_comms_errors);
+			PX4_INFO("DEBUG: MARA cmd write fail %d", bytes_written);
+			return bytes_written;
+		}
+
+		// TODO: check for response from sensor
+
+		// Wait to give the sensor some time to process (50 ms)
+		px4_usleep(50000);
+	}
+
 	/* ---------------------------- Threshold offset ---------------------------- */
 
+	uint8_t *THOF_msg = _cmd_THOF_default;
+	bool THOF_skip = false;
+	int32_t threshold_offset = _param_sensor_thrs.get();
+
+	switch (threshold_offset) {
+	case RFBEAM_PARAM_THRS_DEFAULT:
+		PX4_INFO("DEBUG: threshold offset: %" PRId32 " (default)", (uint32_t)RFBEAM_PARAM_THRS_DEFAULT);
+		THOF_skip = true; // no need to send message
+		break;
+
+	default:
+		if (threshold_offset >= RFBEAM_PARAM_THRS_MIN && threshold_offset <= RFBEAM_PARAM_THRS_MAX) {
+			// Fill payload section (LSB first) of THOF packet
+			THOF_msg[PACKET_PAYLOAD_START_IDX] = (uint8_t)threshold_offset;
+			PX4_INFO("DEBUG: threshold offset: %" PRId32, threshold_offset);
+			break;
+
+		} else {
+			PX4_ERR("invalid threshold offset: %" PRId32, threshold_offset);
+			return PX4_ERROR;
+		}
+	}
+
+	if (!THOF_skip) {
+		bytes_written = ::write(_fd, THOF_msg, THOF_PACKET_BYTES);
+
+		if (bytes_written != THOF_PACKET_BYTES) {
+			perf_count(_comms_errors);
+			PX4_INFO("DEBUG: THOF cmd write fail %d", bytes_written);
+			return bytes_written;
+		}
+
+		// TODO: check for response from sensor
+
+		// Wait to give the sensor some time to process (50 ms)
+		px4_usleep(50000);
+	}
+
 	/* ---------------------------- Chirp integration --------------------------- */
+
+	uint8_t *INTN_msg = _cmd_INTN_default;
+	bool INTN_skip = false;
+	int32_t chirp_count = _param_sensor_chrp.get();
+
+	switch (chirp_count) {
+	case RFBEAM_PARAM_CHRP_DEFAULT:
+		PX4_INFO("DEBUG: chirp integration count: %" PRId32 " (default)", (uint32_t)RFBEAM_PARAM_CHRP_DEFAULT);
+		INTN_skip = true; // no need to send message
+		break;
+
+	default:
+		if (chirp_count >= RFBEAM_PARAM_CHRP_MIN && chirp_count <= RFBEAM_PARAM_CHRP_MAX) {
+			// Fill payload section (LSB first) of INTN packet
+			INTN_msg[PACKET_PAYLOAD_START_IDX] = (uint8_t)chirp_count;
+			PX4_INFO("chirp integration count: %" PRId32, chirp_count);
+			break;
+
+		} else {
+			PX4_ERR("invalid chirp integration count: %" PRId32, chirp_count);
+			return PX4_ERROR;
+		}
+	}
+
+	if (!INTN_skip) {
+		bytes_written = ::write(_fd, INTN_msg, INTN_PACKET_BYTES);
+
+		if (bytes_written != INTN_PACKET_BYTES) {
+			perf_count(_comms_errors);
+			PX4_INFO("DEBUG: INTN cmd write fail %d", bytes_written);
+			return bytes_written;
+		}
+
+		// TODO: check for response from sensor
+
+		// Wait to give the sensor some time to process (50 ms)
+		px4_usleep(50000);
+	}
+
+	/* --------------------------- Distance averaging --------------------------- */
+
+	uint8_t *RAVG_msg = _cmd_RAVG_default;
+	bool RAVG_skip = false;
+	int32_t average = _param_sensor_avg.get();
+
+	switch (average) {
+	case RFBEAM_PARAM_AVG_DEFAULT:
+		PX4_INFO("DEBUG: measurements to average: %" PRId32 " (default)", (uint32_t)RFBEAM_PARAM_AVG_DEFAULT);
+		RAVG_skip = true; // no need to send message
+		break;
+
+	default:
+		if (average >= RFBEAM_PARAM_AVG_MIN && average <= RFBEAM_PARAM_AVG_MAX) {
+			// Fill payload section (LSB first) of RAVG packet
+			RAVG_msg[PACKET_PAYLOAD_START_IDX] = (uint8_t)average;
+			PX4_INFO("DEBUG: measurements to average: %" PRId32, average);
+			break;
+
+		} else {
+			PX4_ERR("invalid average setting: %" PRId32, average);
+			return PX4_ERROR;
+		}
+	}
+
+	if (!RAVG_skip) {
+		bytes_written = ::write(_fd, RAVG_msg, RAVG_PACKET_BYTES);
+
+		if (bytes_written != RAVG_PACKET_BYTES) {
+			perf_count(_comms_errors);
+			PX4_INFO("DEBUG: RAVG cmd write fail %d", bytes_written);
+			return bytes_written;
+		}
+
+		// TODO: check for response from sensor
+
+		// Wait to give the sensor some time to process (50 ms)
+		px4_usleep(50000);
+	}
+
+	/* ----------------------------------- End ---------------------------------- */
 
 	// Close the fd
 	::close(_fd);

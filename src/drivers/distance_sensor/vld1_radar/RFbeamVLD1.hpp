@@ -26,7 +26,10 @@ using namespace time_literals;
 /* -------------------------------------------------------------------------- */
 
 /* ---------------------------------- Basic --------------------------------- */
-#define RFBEAM_STARTUP_TIME         15_ms
+#define RFBEAM_STARTUP_TIME		15_ms
+#define RFBEAM_INTERNAL_OFFSET_MM	21.0f
+#define RFBEAM_RANGE_RESOLUTION_20M_MM	39.0f
+#define RFBEAM_RANGE_RESOLUTION_50M_MM	99.0f
 
 #define RFBEAM_CHIRP_INTEGRATION    1   // 1-100; higher value means slower rate but higher SNR
 #define RFBEAM_SHORT_RANGE_FILTER   1   // on (1) or off (0); choose on to enable short range measurements of strong reflectors
@@ -49,16 +52,44 @@ using namespace time_literals;
 #endif
 #endif
 
-/* ---------------------------- Default settings ---------------------------- */
+/* ----------------------- Default, max, min settings ----------------------- */
 
+// Target filter
 #define RFBEAM_PARAM_TGFI_DEFAULT 	1
+
+// Range mode
 #define RFBEAM_PARAM_RNG_DEFAULT 	0
+
+// Short range filter
 #define RFBEAM_PARAM_SRNG_DEFAULT 	0
+
+// Minimum range filter
 #define RFBEAM_PARAM_MINF_DEFAULT 	5
+#define RFBEAM_PARAM_MINF_MIN		1
+#define RFBEAM_PARAM_MINF_MAX 		510
+
+// Maximum range filter
 #define RFBEAM_PARAM_MAXF_DEFAULT 	460
+#define RFBEAM_PARAM_MAXF_MIN		2
+#define RFBEAM_PARAM_MAXF_MAX 		511
+
+// Threshold offset
 #define RFBEAM_PARAM_THRS_DEFAULT 	60
+#define RFBEAM_PARAM_THRS_MIN	 	20
+#define RFBEAM_PARAM_THRS_MAX 		90
+
+// Chirp integration
 #define RFBEAM_PARAM_CHRP_DEFAULT 	1
+#define RFBEAM_PARAM_CHRP_MIN 		1
+#define RFBEAM_PARAM_CHRP_MAX 		100
+
+// Distance averaging
 #define RFBEAM_PARAM_AVG_DEFAULT 	5
+#define RFBEAM_PARAM_AVG_MIN 		1
+#define RFBEAM_PARAM_AVG_MAX	 	255
+
+
+// TODO
 
 #if RFBEAM_SHORT_RANGE_FILTER == 1
 #define RFBEAM_MEASURE_INTERVAL_MS     RFBEAM_FRAME_PROC_TIME + (RFBEAM_CHIRP_INTEGRATION - 1) * (3_ms + 5_ms)
@@ -157,19 +188,19 @@ private:
 	int open_serial_port(const speed_t speed = B115200);
 
 	/**
-	 * @brief Request or read measurement at intervals
+	 * @brief Request or read measurement at regular intervals.
 	 *
 	 */
 	void Run() override;
 
 	/**
-	 * @brief Initialise the automatic measurement state machine and start it
+	 * @brief Initialise the automatic measurement state machine and start it.
 	 *
 	 */
 	void start();
 
 	/**
-	 * @brief Stop the automatic measurement state machine
+	 * @brief Stop the automatic measurement state machine.
 	 *
 	 */
 	void stop();
@@ -190,6 +221,8 @@ private:
 			   1000; // TODO: factor 1.5 to give sensor extra time, might not be necessary
 
 	bool _collect_phase = false;
+
+	float _range_resolution_mm = 0;
 
 	perf_counter_t _comms_errors = perf_alloc(PC_COUNT, MODULE_NAME ": comm_err");
 	perf_counter_t _sample_perf = perf_alloc(PC_ELAPSED, MODULE_NAME ": read");
@@ -254,7 +287,7 @@ private:
 	/* ---------------------------------- THOF ---------------------------------- */
 
 	// Threshold offset (default): {THOF, 1, 60}
-	uint8_t _cmd_THOF_default[THOF_PACKET_BYTES] = {0x54, 0x48, 0x4F, 0x46, 0x01, 0x00, 0x00, 0x00, 0x3C}; // (uint16_t)RFBEAM_PARAM_THRS_DEFAULT
+	uint8_t _cmd_THOF_default[THOF_PACKET_BYTES] = {0x54, 0x48, 0x4F, 0x46, 0x01, 0x00, 0x00, 0x00, 0x3C}; // (uint8_t)RFBEAM_PARAM_THRS_DEFAULT
 
 	/* ---------------------------------- INTN ---------------------------------- */
 
