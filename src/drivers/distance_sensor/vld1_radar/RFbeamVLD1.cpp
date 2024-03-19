@@ -40,7 +40,7 @@ int RFbeamVLD1::init()
 	ModuleParams::updateParams();
 
 	// Open serial port before writing to it
-	open_serial_port();
+	openSerialPort();
 
 	/* ------------------------- Initialization command ------------------------- */
 
@@ -506,7 +506,7 @@ int RFbeamVLD1::collect()
 	return PX4_OK;
 }
 
-int RFbeamVLD1::open_serial_port(const speed_t speed)
+int RFbeamVLD1::openSerialPort(const speed_t speed)
 {
 	// Skip the rest if  descriptor already initialized
 	if (_fd > 0) {
@@ -613,7 +613,7 @@ int RFbeamVLD1::open_serial_port(const speed_t speed)
 void RFbeamVLD1::Run()
 {
 	// Ensure the serial port is open
-	open_serial_port();
+	openSerialPort();
 
 	// Collection phase
 	if (_collect_phase) {
@@ -654,7 +654,7 @@ void RFbeamVLD1::Run()
 	ScheduleDelayed(_interval_us);
 }
 
-int RFbeamVLD1::request_sensor_settings()
+int RFbeamVLD1::requestSensorSettings()
 {
 	int bytes_written = ::write(_fd, _cmd_GRPS, GRPS_PACKET_BYTES);
 
@@ -667,7 +667,7 @@ int RFbeamVLD1::request_sensor_settings()
 	return PX4_OK;
 }
 
-int RFbeamVLD1::restore_factory_settings()
+int RFbeamVLD1::restoreFactorySettings()
 {
 	int bytes_written = ::write(_fd, _cmd_RFSE, RFSE_PACKET_BYTES);
 
@@ -698,7 +698,7 @@ void RFbeamVLD1::stop()
 	ScheduleClear();
 }
 
-void RFbeamVLD1::print_info()
+void RFbeamVLD1::printInfo()
 {
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);

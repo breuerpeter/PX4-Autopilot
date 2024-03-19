@@ -157,7 +157,7 @@ public:
 	 * @brief Print some basic information about the driver.
 	 *
 	 */
-	void print_info();
+	void printInfo();
 
 private:
 	/**
@@ -180,7 +180,7 @@ private:
 	 * @param speed The baudrate (speed) to configure the serial UART port.
 	 * @return int
 	 */
-	int open_serial_port(const speed_t speed = B115200);
+	int openSerialPort(const speed_t speed = B115200);
 
 	/**
 	 * @brief Request or read measurement at regular intervals.
@@ -205,14 +205,14 @@ private:
 	 *
 	 * @return int
 	 */
-	int request_sensor_settings();
+	int requestSensorSettings();
 
 	/**
 	 * @brief Send a RFSE command to the sensor via UART.
 	 *
 	 * @return int
 	 */
-	int restore_factory_settings();
+	int restoreFactorySettings();
 
 	PX4Rangefinder _px4_rangefinder;
 
