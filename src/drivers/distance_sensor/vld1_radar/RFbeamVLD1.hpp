@@ -11,8 +11,6 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/Subscription.hpp>
 #include <px4_platform_common/module.h>
-
-// TODO: figure out what the following includes are for/if needed at all
 #include <fcntl.h>
 #include <poll.h>
 
@@ -25,31 +23,38 @@ using namespace time_literals;
 /*                                   Defines                                  */
 /* -------------------------------------------------------------------------- */
 
-// TODO:
-#define RFBEAM_CHIRP_INTEGRATION	1
-
 /* ---------------------------------- Basic --------------------------------- */
-#define RFBEAM_STARTUP_TIME		15_ms
+#define RFBEAM_STARTUP_TIME_MS		15_ms
+
+// Internal offset needed for min and max range calculation
 #define RFBEAM_INTERNAL_OFFSET_CM	-2.1f
+
+// Range resolution in low precision mode and 20 m range setting
 #define RFBEAM_RANGE_RESOLUTION_20M_CM	3.934f
+
+// Range resolution in low precision mode and 50 m range setting
 #define RFBEAM_RANGE_RESOLUTION_50M_CM	9.943f
 
-/* ----------------------------- Precision mode ----------------------------- */
+// Additional time per chirp integration
+#define RFBEAM_CHIRP_COUNT_DELTA_T_MS	3_ms
 
-// TODO: add PX4 parameter to switch between high and low precision mode
-#define RFBEAM_HIGH_PRECISION_MODE  1
+// Additional time if short range filter enabled (per chirp integration)
+#define RFBEAM_SHORT_RNG_DELTA_T_MS	5_ms
 
-#if RFBEAM_HIGH_PRECISION_MODE == 1
-#define RFBEAM_FRAME_PROC_TIME      21_ms
-#define RF_BEAM_RESOLUTION          0.001f // in meters
-#else
-#define RFBEAM_FRAME_PROC_TIME      15_ms
-#if RF_BEAM_RANGE_SETTING_M == 20
-#define RF_BEAM_RESOLUTION          0.03934f // in meters
-#else
-#define RF_BEAM_RESOLUTION          0.09943f // in meters
-#endif
-#endif
+// Processing time in high precision mode (we are always in that mode atm) and chirp integration count 1
+#define RFBEAM_FRAME_PROC_TIME_HP_MS	21_ms
+
+// Resolution in high precision mode (we are always in that mode atm)
+#define RF_BEAM_RESOLUTION_HP_M		0.001f
+
+// Time to wait after sending a command to change sensor settings
+#define RFBEAM_SETUP_CMD_WAIT_US	50000
+
+// Update interval above which a warning will be logged
+#define RFBEAM_MAX_MEASURE_INTERVAL_MS	100_ms // 10 Hz
+
+// Multiplicative factor to increase update interval so that sensor doesn't run at full capacity
+#define RFBEAM_MEASURE_INTERVAL_MULT	1.2
 
 /* ----------------------- Default, max, min settings ----------------------- */
 
@@ -87,21 +92,12 @@ using namespace time_literals;
 #define RFBEAM_PARAM_AVG_MIN 		1
 #define RFBEAM_PARAM_AVG_MAX	 	255
 
-
-// TODO
-
-#if RFBEAM_SHORT_RANGE_FILTER == 1
-#define RFBEAM_MEASURE_INTERVAL_MS     RFBEAM_FRAME_PROC_TIME + (RFBEAM_CHIRP_INTEGRATION - 1) * (3_ms + 5_ms)
-#else
-#define RFBEAM_MEASURE_INTERVAL_MS     RFBEAM_FRAME_PROC_TIME + (RFBEAM_CHIRP_INTEGRATION - 1) * 3_ms
-#endif
-
 /**
  * Assume standard deviation to be equal to sensor resolution.
  * Static bench tests have shown that the sensor output does
  * not vary if the unit is not moved.
  */
-#define SENS_VARIANCE               RF_BEAM_RESOLUTION * RF_BEAM_RESOLUTION
+#define SENS_VARIANCE			RF_BEAM_RESOLUTION_HP_M * RF_BEAM_RESOLUTION_HP_M
 
 /* --------------------------------- Packets -------------------------------- */
 
@@ -230,12 +226,9 @@ private:
 	// hrt_abstime _last_read_time = 0;
 	hrt_abstime _read_time = 0;
 
-	int _interval_us = 1.5 * RFBEAM_MEASURE_INTERVAL_MS *
-			   1000; // TODO: factor 1.5 to give sensor extra time, might not be necessary
+	int _interval_us = RFBEAM_MAX_MEASURE_INTERVAL_MS;
 
 	bool _collect_phase = false;
-
-	float _range_resolution_cm = 0;
 
 	perf_counter_t _comms_errors = perf_alloc(PC_COUNT, MODULE_NAME ": comm_err");
 	perf_counter_t _sample_perf = perf_alloc(PC_ELAPSED, MODULE_NAME ": read");

@@ -48,14 +48,14 @@ int RFbeamVLD1::init()
 
 	if (bytes_written != INIT_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: init cmd write fail %d", bytes_written);
+		PX4_ERR("init cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
 	// TODO: check for response from sensor
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
+	// Wait to give the sensor some time to process
+	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
 	/* --------------------------- Target filter mode --------------------------- */
 
@@ -87,30 +87,32 @@ int RFbeamVLD1::init()
 
 	if (bytes_written != TGFI_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: TGFI cmd write fail %d", bytes_written);
+		PX4_ERR("TGFI cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
 	// TODO: check for response from sensor
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
+	// Wait to give the sensor some time to process
+	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
 	/* ------------------------------- Range mode ------------------------------- */
 
 	uint8_t *RRAI_msg = _cmd_RRAI_default;
 	int32_t range_setting = _param_sensor_range.get();
 
+	float range_resolution_cm = 0;
+
 	switch (range_setting) {
 	case RFBEAM_PARAM_RNG_DEFAULT:
 		PX4_INFO("DEBUG: max range setting: 20 m (default)");
-		_range_resolution_cm = RFBEAM_RANGE_RESOLUTION_20M_CM;
+		range_resolution_cm = RFBEAM_RANGE_RESOLUTION_20M_CM;
 		break;
 
 	case 1:
 		RRAI_msg = _cmd_RRAI_50;
 		PX4_INFO("DEBUG: max range setting: 50 m");
-		_range_resolution_cm = RFBEAM_RANGE_RESOLUTION_50M_CM;
+		range_resolution_cm = RFBEAM_RANGE_RESOLUTION_50M_CM;
 		break;
 
 	default:
@@ -122,14 +124,14 @@ int RFbeamVLD1::init()
 
 	if (bytes_written != RRAI_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: RRAI cmd write fail %d", bytes_written);
+		PX4_ERR("RRAI cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
 	// TODO: check for response from sensor
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
+	// Wait to give the sensor some time to process
+	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
 	/* --------------------------- Short range filter --------------------------- */
 
@@ -155,14 +157,14 @@ int RFbeamVLD1::init()
 
 	if (bytes_written != SRDF_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: SRDF cmd write fail %d", bytes_written);
+		PX4_ERR("SRDF cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
 	// TODO: check for response from sensor
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
+	// Wait to give the sensor some time to process
+	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
 	/* -------------------------- Minimum range filter -------------------------- */
 
@@ -170,8 +172,9 @@ int RFbeamVLD1::init()
 	int32_t min_range_setting = _param_sensor_minf.get();
 
 	// Calculate and set minimum detection distance (according to datasheet)
-	float min_distance_m = (min_range_setting * _range_resolution_cm + RFBEAM_INTERNAL_OFFSET_CM) / 100;
+	float min_distance_m = (min_range_setting * range_resolution_cm + RFBEAM_INTERNAL_OFFSET_CM) / 100.0f;
 	_px4_rangefinder.set_min_distance(min_distance_m);
+	PX4_INFO("DEBUG: min distance [m]: %f", (double)min_distance_m);
 
 	switch (min_range_setting) {
 	case RFBEAM_PARAM_MINF_DEFAULT:
@@ -197,14 +200,14 @@ int RFbeamVLD1::init()
 
 	if (bytes_written != MIRA_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: MIRA cmd write fail %d", bytes_written);
+		PX4_ERR("MIRA cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
 	// TODO: check for response from sensor
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
+	// Wait to give the sensor some time to process
+	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
 	// /* -------------------------- Maximum range filter -------------------------- */
 
@@ -212,8 +215,9 @@ int RFbeamVLD1::init()
 	int32_t max_range_setting = _param_sensor_maxf.get();
 
 	// Calculate and set maximum detection distance (according to datasheet)
-	float max_distance_m = (max_range_setting * _range_resolution_cm + RFBEAM_INTERNAL_OFFSET_CM) / 100;
+	float max_distance_m = (max_range_setting * range_resolution_cm + RFBEAM_INTERNAL_OFFSET_CM) / 100.0f;
 	_px4_rangefinder.set_max_distance(max_distance_m);
+	PX4_INFO("DEBUG: max distance [m]: %f", (double)max_distance_m);
 
 	switch (max_range_setting) {
 	case RFBEAM_PARAM_MAXF_DEFAULT:
@@ -239,14 +243,14 @@ int RFbeamVLD1::init()
 
 	if (bytes_written != MARA_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: MARA cmd write fail %d", bytes_written);
+		PX4_ERR("MARA cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
 	// TODO: check for response from sensor
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
+	// Wait to give the sensor some time to process
+	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
 	// /* ---------------------------- Threshold offset ---------------------------- */
 
@@ -275,14 +279,14 @@ int RFbeamVLD1::init()
 
 	if (bytes_written != THOF_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: THOF cmd write fail %d", bytes_written);
+		PX4_ERR("THOF cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
 	// TODO: check for response from sensor
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
+	// Wait to give the sensor some time to process
+	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
 	/* ---------------------------- Chirp integration --------------------------- */
 
@@ -298,7 +302,7 @@ int RFbeamVLD1::init()
 		if (chirp_count >= RFBEAM_PARAM_CHRP_MIN && chirp_count <= RFBEAM_PARAM_CHRP_MAX) {
 			// Fill payload section (LSB first) of INTN packet
 			INTN_msg[PACKET_PAYLOAD_START_IDX] = (uint8_t)chirp_count;
-			PX4_INFO("chirp integration count: %" PRId32, chirp_count);
+			PX4_INFO("DEBUG: chirp integration count: %" PRId32, chirp_count);
 			break;
 
 		} else {
@@ -311,14 +315,14 @@ int RFbeamVLD1::init()
 
 	if (bytes_written != INTN_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: INTN cmd write fail %d", bytes_written);
+		PX4_ERR("INTN cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
 	// TODO: check for response from sensor
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
+	// Wait to give the sensor some time to process
+	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
 
 	/* --------------------------- Distance averaging --------------------------- */
@@ -348,19 +352,37 @@ int RFbeamVLD1::init()
 
 	if (bytes_written != RAVG_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: RAVG cmd write fail %d", bytes_written);
+		PX4_ERR("RAVG cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
 	// TODO: check for response from sensor
 
-	// Wait to give the sensor some time to process (50 ms)
-	px4_usleep(50000);
+	// Wait to give the sensor some time to process
+	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
 
 	/* ----------------------------------- End ---------------------------------- */
 
-	// Close the fd
+	// Calculate update interval
+	if (short_range_filter_enabled) {
+		_interval_us = (RFBEAM_FRAME_PROC_TIME_HP_MS + (chirp_count - 1) * (RFBEAM_CHIRP_COUNT_DELTA_T_MS) + chirp_count *
+			    RFBEAM_SHORT_RNG_DELTA_T_MS) * RFBEAM_MEASURE_INTERVAL_MULT;
+	}
+
+	else {
+		_interval_us = (RFBEAM_FRAME_PROC_TIME_HP_MS + (chirp_count - 1) * (RFBEAM_CHIRP_COUNT_DELTA_T_MS)) * RFBEAM_MEASURE_INTERVAL_MULT;
+	}
+
+	// TODO: why not * 1000 (already prints in us even though values in ms)???
+	PX4_INFO("DEBUG: update interval [us]: %d", _interval_us);
+
+	// Warn user if settings result in too low of an update rate (slower than 10 Hz)
+	if (_interval_us > (1e6 / 10)) {
+		PX4_WARN("low update rate warning [Hz]: %f", (double)(1e6 / _interval_us));
+	}
+
+	// Close the file descriptor
 	::close(_fd);
 	_fd = -1;
 
@@ -378,7 +400,7 @@ int RFbeamVLD1::measure()
 
 	if (bytes_written != GNFD_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_DEBUG("measure cmd write fail %d", bytes_written);
+		PX4_ERR("measure cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
@@ -395,27 +417,26 @@ int RFbeamVLD1::collect()
 	::ioctl(_fd, FIONREAD, (unsigned long)&bytes_available);
 
 	if (!bytes_available) {
-		PX4_INFO("DEBUG: nothing in RX buffer");
+		PX4_ERR("nothing in RX buffer");
 		perf_end(_sample_perf);
 		return PX4_ERROR;
 	}
 
-	PX4_INFO("DEBUG: bytes_available: %d:", bytes_available);
+	PX4_DEBUG("bytes_available: %d:", bytes_available);
 
 	// int64_t read_elapsed = hrt_elapsed_time(&_last_read_time);
 
 	_read_time = hrt_absolute_time(); // TODO: e.g. LeddarOne driver sets timestamp in measure()
 
 	const int buffer_size = sizeof(_read_buffer);
-	PX4_INFO("DEBUG: buffer_size: %d:", buffer_size);
 
 	/* const int message_size = sizeof(PDAT_msg);
-	PX4_INFO("DEBUG: message_size: %d:", message_size); */
+	PX4_DEBUG("message_size: %d:", message_size); */
 
 	// int bytes_read = ::read(_fd, _read_buffer + _read_buffer_len, buffer_size - _read_buffer_len);
 	int bytes_read = ::read(_fd, _read_buffer, buffer_size);
 
-	PX4_INFO("DEBUG: bytes_read: %d:", bytes_read);
+	PX4_DEBUG("bytes_read: %d:", bytes_read);
 
 	if (bytes_read < 0) {
 		perf_count(_comms_errors);
@@ -425,23 +446,23 @@ int RFbeamVLD1::collect()
 
 		/* // Only throw error on timeout
 		if (read_elapsed > (_interval_us * 2)) {
-			PX4_INFO("DEBUG: timeout on read");
+			PX4_DEBUG("timeout on read");
 			return bytes_read;
 
 		} else {
-			PX4_INFO("DEBUG: read error: %d", bytes_read);
+			PX4_DEBUG("read error: %d", bytes_read);
 			return -EAGAIN;
 		}
 
 		} else if (bytes_read == 0) {
-		PX4_INFO("DEBUG: 0 bytes read");
+		PX4_DEBUG("0 bytes read");
 		return -EAGAIN; */
 	}
 
 	/* _read_buffer_len += bytes_read;
 
 	if (_read_buffer_len < message_size) {
-		PX4_INFO("DEBUG: incomplete read");
+		PX4_DEBUG("incomplete read");
 		// Return on next scheduled cycle to collect remaining data
 		return -EAGAIN;
 	}
@@ -455,33 +476,27 @@ int RFbeamVLD1::collect()
 
 	distance_m = msg->distance;
 
-	PX4_INFO("DEBUG: distance_m: %f:", (double)distance_m); */
+	PX4_DEBUG("distance_m: %f:", (double)distance_m); */
 
+	// TODO: make define
 	else if (bytes_read != 23) {
-		PX4_INFO("DEBUG: no target detected, bytes read: %d", bytes_read);
+		PX4_DEBUG("no target detected, bytes read: %d", bytes_read);
 		perf_end(_sample_perf);
 		return PX4_ERROR;
 	}
 
 	uint8_t _read_buffer_distance[sizeof(float)] = {}; // should be 4 bytes according to sensor datasheet
 
-	PX4_INFO("DEBUG: distance buffer size: %d:", sizeof(float));
-
+	// TODO: make defines
 	_read_buffer_distance[0] = _read_buffer[17 + 0];
-	PX4_INFO("DEBUG: distance buffer element 1/4: %d:", _read_buffer_distance[0]);
 	_read_buffer_distance[1] = _read_buffer[17 + 1];
-	PX4_INFO("DEBUG: distance buffer element 2/4: %d:", _read_buffer_distance[1]);
 	_read_buffer_distance[2] = _read_buffer[17 + 2];
-	PX4_INFO("DEBUG: distance buffer element 3/4: %d:", _read_buffer_distance[2]);
 	_read_buffer_distance[3] = _read_buffer[17 + 3];
-	PX4_INFO("DEBUG: distance buffer element 4/4: %d:", _read_buffer_distance[3]);
 
 	// float distance_m = *((float *)_read_buffer_distance);
 
 	float distance_m;
 	memcpy(&distance_m, _read_buffer_distance, sizeof(distance_m));
-
-	PX4_INFO("DEBUG: distance: %f:", (double)distance_m);
 
 	// Send via uORB
 	_px4_rangefinder.update(_read_time, distance_m); // TODO: distance_m, may need LSB conversion?
@@ -607,7 +622,7 @@ void RFbeamVLD1::Run()
 		if (ret != PX4_OK) {
 			// Case 1/2: try again upon incomplete/failed read
 			if (ret == -EAGAIN) {
-				PX4_INFO("DEBUG: trying read again");
+				PX4_DEBUG("trying read again");
 				// Reschedule to grab the missing bits, time to transmit 9 bytes @ 115200 bps // TODO: choose right interval
 				ScheduleClear();
 				ScheduleOnInterval(7_ms, 87 * 9);
@@ -615,7 +630,7 @@ void RFbeamVLD1::Run()
 
 			// Case 2/2: data collection error (timeout)
 			else {
-				PX4_INFO("DEBUG: collection error");
+				PX4_ERR("collection error");
 				// Restart the measurement state machine i.e. skip collection on next iteration
 				start();
 			}
@@ -629,7 +644,7 @@ void RFbeamVLD1::Run()
 
 	// Measurement phase
 	if (measure() != PX4_OK) {
-		PX4_INFO("DEBUG: measure error");
+		PX4_ERR("measure error");
 	}
 
 	// Next phase is collection
@@ -645,7 +660,7 @@ int RFbeamVLD1::request_sensor_settings()
 
 	if (bytes_written != GRPS_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: GRPS cmd write fail %d", bytes_written);
+		PX4_ERR("GRPS cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
@@ -658,7 +673,7 @@ int RFbeamVLD1::restore_factory_settings()
 
 	if (bytes_written != RFSE_PACKET_BYTES) {
 		perf_count(_comms_errors);
-		PX4_INFO("DEBUG: RFSE cmd write fail %d", bytes_written);
+		PX4_ERR("RFSE cmd write fail %d", bytes_written);
 		return bytes_written;
 	}
 
