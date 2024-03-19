@@ -15,7 +15,7 @@ RFbeamVLD1::RFbeamVLD1(const char *port, uint8_t rotation)
 	device::Device::DeviceId device_id;
 	device_id.devid_s.bus_type = device::Device::Device::DeviceBusType_SERIAL;
 
-	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]);  // Assuming '/dev/ttySx'
+	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]);  // assuming '/dev/ttySx'
 
 	if (bus_num < 10) {
 		device_id.devid_s.bus = bus_num;
@@ -184,9 +184,9 @@ int RFbeamVLD1::init()
 	default:
 		if (min_range_setting >= RFBEAM_PARAM_MINF_MIN && min_range_setting <= RFBEAM_PARAM_MINF_MAX) {
 			uint16_t min_range = (uint16_t)min_range_setting;
-			// Fill payload section (LSB first) of MIRA packet
+			// Fill payload section (little endian) of MIRA packet
 			MIRA_msg[PACKET_PAYLOAD_START_IDX] = (uint8_t)(min_range & 0xFF); // mask away the higher byte
-			MIRA_msg[PACKET_PAYLOAD_START_IDX + 1] = (uint8_t)(min_range >> 8); //
+			MIRA_msg[PACKET_PAYLOAD_START_IDX + 1] = (uint8_t)(min_range >> 8); // shift away the lower byte
 			PX4_INFO("DEBUG: min range filter: bin %" PRId32, min_range_setting);
 			break;
 
@@ -209,7 +209,7 @@ int RFbeamVLD1::init()
 	// Wait to give the sensor some time to process
 	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
-	// /* -------------------------- Maximum range filter -------------------------- */
+	/* -------------------------- Maximum range filter -------------------------- */
 
 	uint8_t *MARA_msg = _cmd_MARA_default;
 	int32_t max_range_setting = _param_sensor_maxf.get();
@@ -229,7 +229,7 @@ int RFbeamVLD1::init()
 			uint16_t max_range = (uint16_t)max_range_setting;
 			// Fill payload section (LSB first) of MARA packet
 			MARA_msg[PACKET_PAYLOAD_START_IDX] = (uint8_t)(max_range & 0xFF); // mask away the higher byte
-			MARA_msg[PACKET_PAYLOAD_START_IDX + 1] = (uint8_t)(max_range >> 8); //
+			MARA_msg[PACKET_PAYLOAD_START_IDX + 1] = (uint8_t)(max_range >> 8); // shift away the lower byte
 			PX4_INFO("DEBUG: max range filter: bin %" PRId32, max_range_setting);
 			break;
 
@@ -252,7 +252,7 @@ int RFbeamVLD1::init()
 	// Wait to give the sensor some time to process
 	px4_usleep(RFBEAM_SETUP_CMD_WAIT_US);
 
-	// /* ---------------------------- Threshold offset ---------------------------- */
+	/* ---------------------------- Threshold offset ---------------------------- */
 
 	uint8_t *THOF_msg = _cmd_THOF_default;
 	int32_t threshold_offset = _param_sensor_thrs.get();
@@ -367,11 +367,12 @@ int RFbeamVLD1::init()
 	// Calculate update interval
 	if (short_range_filter_enabled) {
 		_interval_us = (RFBEAM_FRAME_PROC_TIME_HP_MS + (chirp_count - 1) * (RFBEAM_CHIRP_COUNT_DELTA_T_MS) + chirp_count *
-			    RFBEAM_SHORT_RNG_DELTA_T_MS) * RFBEAM_MEASURE_INTERVAL_MULT;
+				RFBEAM_SHORT_RNG_DELTA_T_MS) * RFBEAM_MEASURE_INTERVAL_MULT;
 	}
 
 	else {
-		_interval_us = (RFBEAM_FRAME_PROC_TIME_HP_MS + (chirp_count - 1) * (RFBEAM_CHIRP_COUNT_DELTA_T_MS)) * RFBEAM_MEASURE_INTERVAL_MULT;
+		_interval_us = (RFBEAM_FRAME_PROC_TIME_HP_MS + (chirp_count - 1) * (RFBEAM_CHIRP_COUNT_DELTA_T_MS)) *
+			       RFBEAM_MEASURE_INTERVAL_MULT;
 	}
 
 	// TODO: why not * 1000 (already prints in us even though values in ms)???
@@ -478,8 +479,7 @@ int RFbeamVLD1::collect()
 
 	PX4_DEBUG("distance_m: %f:", (double)distance_m); */
 
-	// TODO: make define
-	else if (bytes_read != 23) {
+	else if (bytes_read != (RESP_PACKET_BYTES + PDAT_PACKET_BYTES)) {
 		PX4_DEBUG("no target detected, bytes read: %d", bytes_read);
 		perf_end(_sample_perf);
 		return PX4_ERROR;
@@ -487,11 +487,12 @@ int RFbeamVLD1::collect()
 
 	uint8_t _read_buffer_distance[sizeof(float)] = {}; // should be 4 bytes according to sensor datasheet
 
-	// TODO: make defines
-	_read_buffer_distance[0] = _read_buffer[17 + 0];
-	_read_buffer_distance[1] = _read_buffer[17 + 1];
-	_read_buffer_distance[2] = _read_buffer[17 + 2];
-	_read_buffer_distance[3] = _read_buffer[17 + 3];
+	_read_buffer_distance[0] = _read_buffer[RESP_PACKET_BYTES + PACKET_PAYLOAD_START_IDX + 0];
+	_read_buffer_distance[1] = _read_buffer[RESP_PACKET_BYTES + PACKET_PAYLOAD_START_IDX + 1];
+	_read_buffer_distance[2] = _read_buffer[RESP_PACKET_BYTES + PACKET_PAYLOAD_START_IDX + 2];
+	_read_buffer_distance[3] = _read_buffer[RESP_PACKET_BYTES + PACKET_PAYLOAD_START_IDX + 3];
+
+	// TODO: implement the above in a more elegant way (casting buffer i.e. array ptr to PDAT_msg ptr, as in code commented out above)
 
 	// float distance_m = *((float *)_read_buffer_distance);
 
@@ -499,7 +500,7 @@ int RFbeamVLD1::collect()
 	memcpy(&distance_m, _read_buffer_distance, sizeof(distance_m));
 
 	// Send via uORB
-	_px4_rangefinder.update(_read_time, distance_m); // TODO: distance_m, may need LSB conversion?
+	_px4_rangefinder.update(_read_time, distance_m);
 
 	perf_end(_sample_perf);
 
@@ -621,6 +622,7 @@ void RFbeamVLD1::Run()
 
 		if (ret != PX4_OK) {
 			// Case 1/2: try again upon incomplete/failed read
+			// TODO: the code in collect() that would trigger this case is currently commented out
 			if (ret == -EAGAIN) {
 				PX4_DEBUG("trying read again");
 				// Reschedule to grab the missing bits, time to transmit 9 bytes @ 115200 bps // TODO: choose right interval

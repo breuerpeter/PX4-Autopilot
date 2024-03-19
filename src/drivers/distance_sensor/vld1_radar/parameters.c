@@ -118,7 +118,7 @@ PARAM_DEFINE_INT32(SENS_VLD1_MAXF, 460);
  * @max 90
  * @group Sensors
  */
-PARAM_DEFINE_INT32(SENS_VLD1_THRS, 60);
+PARAM_DEFINE_INT32(SENS_VLD1_THRS, 40);
 
 /**
  * Configure the chirp integration of the RFbeam V-LD1 radar distance sensor

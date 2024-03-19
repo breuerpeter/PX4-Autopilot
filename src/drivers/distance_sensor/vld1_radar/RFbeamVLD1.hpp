@@ -125,9 +125,10 @@ using namespace time_literals;
 #define JBTL_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 0	// Payload bytes of JBTL command
 
 // Radar -> driver (responses)
-#define RESP_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1	// Payload bytes of RESP response
-#define RADC_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 2048	// Payload bytes of RADC response
-#define DONE_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 4	// Payload bytes of DONE response
+#define RESP_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 1			// Payload bytes of RESP response
+#define RADC_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 2048			// Payload bytes of RADC response
+#define DONE_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + 4			// Payload bytes of DONE response
+#define PDAT_PACKET_BYTES       PACKET_PAYLOAD_START_IDX + sizeof(PDAT_msg)	// Payload bytes of PDAT response (if a target is detected, otherwise zero payload)
 
 struct __attribute__((__packed__)) PDAT_msg {
 	float distance;
@@ -253,7 +254,8 @@ private:
 	uint8_t _cmd_TGFI_strong[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
 
 	// Target filter: nearest first (default): {TGFI, 1, 1}
-	uint8_t _cmd_TGFI_near[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01}; // (uint8_t)RFBEAM_PARAM_TGFI_DEFAULT
+	// TODO: use (uint8_t)RFBEAM_PARAM_TGFI_DEFAULT as payload
+	uint8_t _cmd_TGFI_near[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
 
 	// Target filter: farthest first: {TGFI, 1, 2}
 	uint8_t _cmdTGFI_FAR[TGFI_PACKET_BYTES] = {0x54, 0x47, 0x46, 0x49, 0x01, 0x00, 0x00, 0x00, 0x02};
@@ -263,7 +265,8 @@ private:
 	/* ---------------------------------- RRAI ---------------------------------- */
 
 	// Max range setting: 20 m (default): {RRAI, 1, 0}
-	uint8_t _cmd_RRAI_20[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00}; // (uint8_t)RFBEAM_PARAM_RNG_DEFAULT
+	// TODO: use (uint8_t)RFBEAM_PARAM_RNG_DEFAULT as payload
+	uint8_t _cmd_RRAI_20[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00};
 
 	// Max range setting: 50 m: {RRAI, 1, 1}
 	uint8_t _cmd_RRAI_50[RRAI_PACKET_BYTES] = {0x52, 0x52, 0x41, 0x49, 0x01, 0x00, 0x00, 0x00, 0x01};
@@ -273,7 +276,8 @@ private:
 	/* ---------------------------------- SRDF ---------------------------------- */
 
 	// Short range filter off (default): {SRDF, 1, 0}
-	uint8_t _cmd_SRDF_off[SRDF_PACKET_BYTES] = {0x53, 0x52, 0x44, 0x46, 0x01, 0x00, 0x00, 0x00, 0x00}; // (uint8_t)RFBEAM_PARAM_SRNG_DEFAULT
+	// TODO: use (uint8_t)RFBEAM_PARAM_SRNG_DEFAULT as payload
+	uint8_t _cmd_SRDF_off[SRDF_PACKET_BYTES] = {0x53, 0x52, 0x44, 0x46, 0x01, 0x00, 0x00, 0x00, 0x00};
 
 	// Short range filter on: {SRDF, 1, 1}
 	uint8_t _cmd_SRDF_on[SRDF_PACKET_BYTES] = {0x53, 0x52, 0x44, 0x46, 0x01, 0x00, 0x00, 0x00, 0x01};
@@ -283,27 +287,32 @@ private:
 	/* ---------------------------------- MIRA ---------------------------------- */
 
 	// Minimum range filter (default): {MIRA, 2, 5}
-	uint8_t _cmd_MIRA_default[MIRA_PACKET_BYTES] = {0x4D, 0x49, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0x05, 0x00}; // TODO: use (uint16_t)RFBEAM_PARAM_MINF_DEFAULT
+	// TODO: use (uint16_t)RFBEAM_PARAM_MINF_DEFAULT as payload
+	uint8_t _cmd_MIRA_default[MIRA_PACKET_BYTES] = {0x4D, 0x49, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0x05, 0x00};
 
 	/* ---------------------------------- MARA ---------------------------------- */
 
 	// Maximum range filter (default): {MARA, 2, 460}
-	uint8_t _cmd_MARA_default[MARA_PACKET_BYTES] = {0x4D, 0x41, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0xCC, 0x01}; // TODO: use (uint16_t)RFBEAM_PARAM_MAXF_DEFAULT // TODO: check
+	// TODO: use (uint16_t)RFBEAM_PARAM_MAXF_DEFAULT as payload
+	uint8_t _cmd_MARA_default[MARA_PACKET_BYTES] = {0x4D, 0x41, 0x52, 0x41, 0x02, 0x00, 0x00, 0x00, 0xCC, 0x01};
 
 	/* ---------------------------------- THOF ---------------------------------- */
 
-	// Threshold offset (default): {THOF, 1, 40 i.e. 0x28}
-	uint8_t _cmd_THOF_default[THOF_PACKET_BYTES] = {0x54, 0x48, 0x4F, 0x46, 0x01, 0x00, 0x00, 0x00, 0x28}; // TODO: use (uint8_t)RFBEAM_PARAM_THRS_DEFAULT
+	// Threshold offset (default): {THOF, 1, 40}
+	// TODO: use (uint8_t)RFBEAM_PARAM_THRS_DEFAULT as payload
+	uint8_t _cmd_THOF_default[THOF_PACKET_BYTES] = {0x54, 0x48, 0x4F, 0x46, 0x01, 0x00, 0x00, 0x00, 0x28};
 
 	/* ---------------------------------- INTN ---------------------------------- */
 
 	// Chirp integration count (default): {INTN, 1, 1}
-	uint8_t _cmd_INTN_default[INTN_PACKET_BYTES] = {0x49, 0x4E, 0x54, 0x4E, 0x01, 0x00, 0x00, 0x00, 0x01}; // TODO: use (uint8_t)RFBEAM_PARAM_CHRP_DEFAULT
+	// TODO: use (uint8_t)RFBEAM_PARAM_CHRP_DEFAULT as payload
+	uint8_t _cmd_INTN_default[INTN_PACKET_BYTES] = {0x49, 0x4E, 0x54, 0x4E, 0x01, 0x00, 0x00, 0x00, 0x01};
 
 	/* ---------------------------------- RAVG ---------------------------------- */
 
 	// Distance average count (default): {RAVG, 1, 5}
-	uint8_t _cmd_RAVG_default[RAVG_PACKET_BYTES] = {0x52, 0x41, 0x56, 0x47, 0x01, 0x00, 0x00, 0x00, 0x05}; // TODO: use (uint8_t)RFBEAM_PARAM_AVG_DEFAULT
+	// TODO: use (uint8_t)RFBEAM_PARAM_AVG_DEFAULT as payload
+	uint8_t _cmd_RAVG_default[RAVG_PACKET_BYTES] = {0x52, 0x41, 0x56, 0x47, 0x01, 0x00, 0x00, 0x00, 0x05};
 
 
 	/* -------------------------------------------------------------------------- */
