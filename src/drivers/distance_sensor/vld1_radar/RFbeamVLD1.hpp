@@ -78,7 +78,7 @@ using namespace time_literals;
 #define RFBEAM_PARAM_MAXF_MAX 		511
 
 // Threshold offset
-#define RFBEAM_PARAM_THRS_DEFAULT 	60
+#define RFBEAM_PARAM_THRS_DEFAULT 	40
 #define RFBEAM_PARAM_THRS_MIN	 	20
 #define RFBEAM_PARAM_THRS_MAX 		90
 
@@ -292,7 +292,7 @@ private:
 
 	/* ---------------------------------- THOF ---------------------------------- */
 
-	// Threshold offset (default): {THOF, 1, 60 i.e. 0x3C}
+	// Threshold offset (default): {THOF, 1, 40 i.e. 0x28}
 	uint8_t _cmd_THOF_default[THOF_PACKET_BYTES] = {0x54, 0x48, 0x4F, 0x46, 0x01, 0x00, 0x00, 0x00, 0x28}; // TODO: use (uint8_t)RFBEAM_PARAM_THRS_DEFAULT
 
 	/* ---------------------------------- INTN ---------------------------------- */
